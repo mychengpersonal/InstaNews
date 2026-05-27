@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#FAF8F3">
 <title>InstaNews · 印思新聞</title>
-<meta name="version" content="demo-v0.4">
+<meta name="version" content="demo-v0.6.4">
 <meta name="version-date" content="2026-05-18">
 <meta name="description" content="InstaNews 印思新聞 demo - 讓你 30 秒跟上世界，還能跟同事聊得起來">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -190,6 +190,66 @@
     transform: translateY(30px);
   }
 
+  /* ===== 終點卡 / 歷史模式入口 ===== */
+  .card.end-card {
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 32px;
+  }
+  .card.end-card::before { display: none; }
+  .end-card-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 20px;
+    color: var(--ink-mute);
+    opacity: 0.5;
+  }
+  .end-card-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+  .end-card-subtitle {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink-mute);
+    line-height: 1.7;
+    margin-bottom: 32px;
+    letter-spacing: 0.03em;
+  }
+  .end-card-btn {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 24px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .end-card-btn:hover { opacity: 0.85; }
+  .end-card-btn:active { transform: scale(0.96); }
+  .end-card-btn svg { width: 14px; height: 14px; }
+  .end-card-foot {
+    margin-top: 24px;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-mute);
+    opacity: 0.7;
+    letter-spacing: 0.05em;
+  }
+
+
   /* small accent line at top of card */
   .card::before {
     content: "";
@@ -366,7 +426,7 @@
   .modal-sheet {
     width: 100%;
     max-width: 460px;
-    max-height: 80vh;
+    height: 80vh;
     background: var(--bg);
     border-radius: 20px 20px 0 0;
     padding: 24px 0 env(safe-area-inset-bottom);
@@ -390,6 +450,45 @@
     font-size: 18px;
     letter-spacing: 0.05em;
   }
+  /* 收藏篩選器 */
+  .fav-filter {
+    display: flex;
+    gap: 6px;
+    padding: 12px 24px 4px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .fav-filter::-webkit-scrollbar { display: none; }
+  .fav-filter-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 5px 12px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+  }
+  .fav-filter-btn:hover {
+    border-color: var(--ink-soft);
+  }
+  .fav-filter-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .fav-filter-btn .count {
+    margin-left: 4px;
+    opacity: 0.6;
+    font-weight: 400;
+  }
+
   .modal-list {
     overflow-y: auto;
     padding: 8px 0;
@@ -397,7 +496,7 @@
   }
   .modal-list .empty {
     text-align: center;
-    padding: 60px 24px;
+    padding: 80px 24px 60px;
     color: var(--ink-mute);
     font-size: 14px;
     line-height: 1.8;
@@ -779,6 +878,12 @@
       <button class="icon-btn" id="closeModal" aria-label="關閉">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
+    </div>
+    <div class="fav-filter" id="favFilter">
+      <button class="fav-filter-btn active" data-range="all">全部 <span class="count" id="cnt-all"></span></button>
+      <button class="fav-filter-btn" data-range="today">今日 <span class="count" id="cnt-today"></span></button>
+      <button class="fav-filter-btn" data-range="week">這週 <span class="count" id="cnt-week"></span></button>
+      <button class="fav-filter-btn" data-range="month">過去一個月 <span class="count" id="cnt-month"></span></button>
     </div>
     <div class="modal-list" id="modalList"></div>
   </div>
@@ -1435,6 +1540,36 @@
     });
   }
 
+  // 計算昨天的日期字串 (5/17, 5/16 等)
+  function formatHistoryDate(daysAgo) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  function renderEndCard(topicIdx, topic) {
+    const el = document.createElement('article');
+    el.className = 'card end-card';
+    el.innerHTML = `
+      <svg class="end-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+      <div class="end-card-title">今日的${topic.name}新聞已閱畢</div>
+      <div class="end-card-subtitle">想看更早的新聞嗎？</div>
+      <button class="end-card-btn" data-action="history">
+        看 ${formatHistoryDate(1)} 的新聞
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+      <div class="end-card-foot">最多可回溯 7 天</div>
+    `;
+    el.querySelector('.end-card-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      showToast('歷史模式即將推出，目前 demo 僅有一天份內容');
+    });
+    return el;
+  }
+
   function renderCards() {
     const topic = DATA.topics[currentTopicIdx];
     stage.innerHTML = '';
@@ -1513,17 +1648,26 @@
       attachLongPress(el, card);
       stage.appendChild(el);
     });
+    // 加終點卡作為該主題最後一張（index = cards.length）
+    const endCard = renderEndCard(currentTopicIdx, topic);
+    if (currentCardIdx === topic.cards.length) {
+      endCard.classList.add('active');
+    }
+    stage.appendChild(endCard);
     renderDots();
   }
 
   function renderDots() {
     const topic = DATA.topics[currentTopicIdx];
     dots.innerHTML = '';
-    topic.cards.forEach((_, i) => {
+    // 含終點卡，所以總數是 cards.length + 1
+    for (let i = 0; i <= topic.cards.length; i++) {
       const d = document.createElement('span');
       d.className = 'dot' + (i === currentCardIdx ? ' active' : '');
+      // 終點卡用特殊樣式（較淡）
+      if (i === topic.cards.length) d.style.opacity = '0.4';
       dots.appendChild(d);
-    });
+    }
   }
 
   // ============ Navigation ============
@@ -1536,14 +1680,19 @@
     topicLastIdx[currentTopicIdx] = currentCardIdx;
     currentTopicIdx = idx;
     // 還原新主題上次的進度（沒記錄過就從 0 開始）
-    currentCardIdx = topicLastIdx[idx] || 0;
+    let savedIdx = topicLastIdx[idx] || 0;
+    // 防呆：上次的 idx 不能超過新主題的卡片數（包含終點卡，所以最大是 cards.length）
+    const maxIdx = DATA.topics[idx].cards.length;
+    if (savedIdx > maxIdx) savedIdx = 0;
+    currentCardIdx = savedIdx;
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
     renderCards();
   }
 
   function nextCard() {
     const cards = DATA.topics[currentTopicIdx].cards;
-    if (currentCardIdx >= cards.length - 1) {
+    // 終點卡的 index = cards.length，所以最大可到 cards.length
+    if (currentCardIdx >= cards.length) {
       bounce('down');
       return;
     }
@@ -1751,10 +1900,60 @@
   modal.addEventListener('click', (e) => { if (e.target === modal) closeFavModal(); });
 
   function openFavModal() {
+    // 每次打開都重置回「全部」
+    currentFavFilter = 'all';
+    document.querySelectorAll('.fav-filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.range === 'all');
+    });
     renderFavList();
     modal.classList.add('show');
   }
   function closeFavModal() { modal.classList.remove('show'); }
+
+  // 篩選器點擊
+  document.querySelectorAll('.fav-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentFavFilter = btn.dataset.range;
+      document.querySelectorAll('.fav-filter-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+      renderFavList();
+    });
+  });
+
+  let currentFavFilter = 'all';
+
+  function getRangeStart(range) {
+    const now = new Date();
+    if (range === 'today') {
+      // 今日 00:00:00
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    }
+    if (range === 'week') {
+      // 過去 7 天
+      return now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    }
+    if (range === 'month') {
+      // 過去 30 天
+      return now.getTime() - 30 * 24 * 60 * 60 * 1000;
+    }
+    return 0;
+  }
+
+  function updateFilterCounts(items) {
+    const counts = { all: 0, today: 0, week: 0, month: 0 };
+    items.forEach(it => {
+      counts.all++;
+      if (it.ts >= getRangeStart('today')) counts.today++;
+      if (it.ts >= getRangeStart('week')) counts.week++;
+      if (it.ts >= getRangeStart('month')) counts.month++;
+    });
+    ['all', 'today', 'week', 'month'].forEach(k => {
+      const el = document.getElementById('cnt-' + k);
+      if (el) el.textContent = counts[k] > 0 ? counts[k] : '';
+    });
+    return counts;
+  }
 
   function renderFavList() {
     // 先建立目前所有存在的卡片 id 集合
@@ -1771,19 +1970,38 @@
     favCount.textContent = favorites.length > 0 ? `(${favorites.length})` : '';
     if (favorites.length === 0) {
       modalList.innerHTML = '<div class="empty">還沒有收藏的新聞<br>點愛心或長按卡片即可收藏</div>';
+      // 篩選器計數歸零
+      ['all', 'today', 'week', 'month'].forEach(k => {
+        const el = document.getElementById('cnt-' + k);
+        if (el) el.textContent = '';
+      });
       return;
     }
     modalList.innerHTML = '';
     const favMap = {};
     favorites.forEach(f => { favMap[f.id] = f.ts; });
-    const all = [];
+    let all = [];
     DATA.topics.forEach((t, ti) => {
       t.cards.forEach((c, ci) => {
         if (favMap[c.id]) all.push({ topic: t, topicIdx: ti, card: c, cardIdx: ci, ts: favMap[c.id] });
       });
     });
+    // 更新各分類的數量
+    updateFilterCounts(all);
+    // 套用 filter
+    if (currentFavFilter !== 'all') {
+      const start = getRangeStart(currentFavFilter);
+      all = all.filter(it => it.ts >= start);
+    }
     // 最近收藏的排最上
     all.sort((a, b) => b.ts - a.ts);
+
+    // 篩選後沒結果
+    if (all.length === 0) {
+      const label = { today: '今日', week: '這週', month: '過去一個月' }[currentFavFilter];
+      modalList.innerHTML = `<div class="empty">${label}沒有收藏的新聞</div>`;
+      return;
+    }
     all.forEach(item => {
       const hasExt = item.card.extensions && item.card.extensions.length > 0;
       const wrap = document.createElement('div');
