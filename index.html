@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#FAF8F3">
 <title>InstaNews · 印思新聞</title>
-<meta name="version" content="demo-v0.8">
+<meta name="version" content="demo-v0.10.1">
 <meta name="version-date" content="2026-05-18">
 <meta name="description" content="InstaNews 印思新聞 demo - 讓你 30 秒跟上世界，還能跟同事聊得起來">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1015,9 +1015,175 @@
     letter-spacing: 0.05em;
   }
   .splash-error-btn:hover { opacity: 0.85; }
+
+  /* ===== Tutorial Overlay ===== */
+  .tutorial {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .tutorial.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 跳過按鈕 */
+  .tutorial-skip {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 16px);
+    right: 20px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.45);
+    color: rgba(255,255,255,0.85);
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-family: var(--sans);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    z-index: 2;
+  }
+  .tutorial-skip:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  /* 步驟視覺提示區（中央或框選位置） */
+  .tutorial-stage {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 中央上下箭頭（step 1） */
+  .tutorial-arrow-vert {
+    width: 60px;
+    height: 140px;
+    color: rgba(255,255,255,0.85);
+    animation: arrowVert 1.4s ease-in-out infinite;
+  }
+  @keyframes arrowVert {
+    0%, 100% { transform: translateY(-10px); }
+    50% { transform: translateY(10px); }
+  }
+
+  /* 中央左右箭頭（step 2） */
+  .tutorial-arrow-horiz {
+    width: 160px;
+    height: 60px;
+    color: rgba(255,255,255,0.85);
+    animation: arrowHoriz 1.4s ease-in-out infinite;
+  }
+  @keyframes arrowHoriz {
+    0%, 100% { transform: translateX(-10px); }
+    50% { transform: translateX(10px); }
+  }
+
+  /* 框選 ring（step 3 / step 4 用，動態定位） */
+  .tutorial-ring {
+    position: fixed;
+    border: 2px solid rgba(255,255,255,0.95);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: top 0.4s ease, left 0.4s ease, width 0.4s ease, height 0.4s ease;
+    animation: ringPulse 1.6s ease-in-out infinite;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.15);
+  }
+  @keyframes ringPulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(255,255,255,0.15); transform: scale(1); }
+    50% { box-shadow: 0 0 0 10px rgba(255,255,255,0.05); transform: scale(1.08); }
+  }
+
+  /* step 3 額外：長按手勢圖示 */
+  .tutorial-tap-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    color: rgba(255,255,255,0.9);
+  }
+  .tutorial-tap-hint svg {
+    width: 70px;
+    height: 70px;
+  }
+  .tutorial-tap-hint .tap-circle {
+    animation: tapPulse 1.4s ease-out infinite;
+    transform-origin: center;
+  }
+  @keyframes tapPulse {
+    0% { opacity: 1; transform: scale(0.5); }
+    100% { opacity: 0; transform: scale(1.6); }
+  }
+
+  /* 文字 + 步驟點 + 引導 */
+  .tutorial-foot {
+    padding: 0 32px 40px;
+    text-align: center;
+    color: #fff;
+    width: 100%;
+  }
+  .tutorial-text {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-bottom: 22px;
+    letter-spacing: 0.04em;
+    transition: opacity 0.3s;
+  }
+  .tutorial-text.fading {
+    opacity: 0;
+  }
+  .tutorial-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .tutorial-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.5);
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .tutorial-dot.active {
+    background: #fff;
+    border-color: #fff;
+  }
+  .tutorial-hint {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.15em;
+  }
 </style>
 </head>
 <body>
+<div class="tutorial" id="tutorial">
+  <button class="tutorial-skip" id="tutorialSkip">跳過</button>
+  <div class="tutorial-stage" id="tutorialStage"></div>
+  <div class="tutorial-ring" id="tutorialRing" style="display:none;"></div>
+  <div class="tutorial-foot">
+    <div class="tutorial-text" id="tutorialText"></div>
+    <div class="tutorial-dots" id="tutorialDots"></div>
+    <div class="tutorial-hint" id="tutorialHint">點任意處繼續</div>
+  </div>
+</div>
+
 <div class="splash" id="splash">
   <div class="splash-brand">
     <div class="splash-brand-en">InstaNews</div>
@@ -1127,7 +1293,66 @@
     }
   }
 
-  /**
+  // ============ Reading State (位置記憶 + 跨日重置 + 完成主題) ============
+  const READING_STATE_KEY = 'instanews_reading_state';
+
+  // 預設值（給第一次開 App 或 cache 不合法時用）
+  function defaultReadingState() {
+    return {
+      lastOpenedDate: null,
+      lastActiveTopic: null,    // 第一個 topic id 開啟 App 時填
+      positionByTopic: {},      // { topicId: cardIdx }
+      completedTopics: [],
+      lastUpdatedAt: null
+    };
+  }
+
+  function readReadingState() {
+    try {
+      const raw = localStorage.getItem(READING_STATE_KEY);
+      if (!raw) return defaultReadingState();
+      const obj = JSON.parse(raw);
+      // 補上缺欄位避免舊版相容問題
+      return Object.assign(defaultReadingState(), obj);
+    } catch (e) {
+      return defaultReadingState();
+    }
+  }
+
+  // 節流寫入：1 秒內最多寫一次
+  let _writeReadingTimer = null;
+  let _pendingReadingState = null;
+  function writeReadingState(state) {
+    _pendingReadingState = state;
+    if (_writeReadingTimer) return;
+    _writeReadingTimer = setTimeout(() => {
+      try {
+        _pendingReadingState.lastUpdatedAt = new Date().toISOString();
+        localStorage.setItem(READING_STATE_KEY, JSON.stringify(_pendingReadingState));
+      } catch (e) {
+        console.warn('[ReadingState] write failed', e);
+      }
+      _writeReadingTimer = null;
+      _pendingReadingState = null;
+    }, 1000);
+  }
+
+  // 立刻寫入（不節流）— 用在重要時刻（topic_complete、新一天 reset）
+  function flushReadingState(state) {
+    if (_writeReadingTimer) {
+      clearTimeout(_writeReadingTimer);
+      _writeReadingTimer = null;
+    }
+    try {
+      state.lastUpdatedAt = new Date().toISOString();
+      localStorage.setItem(READING_STATE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('[ReadingState] flush failed', e);
+    }
+    _pendingReadingState = null;
+  }
+
+    /**
    * 通用埋點函式。所有 17 個事件都呼叫這個。
    * 未來要換 Mixpanel 等平台時，只改這個函式內部，呼叫點都不用動。
    *
@@ -1823,20 +2048,19 @@
     localStorage.removeItem(CARD_CACHE_KEY);
   }
 
-  // 「上次看到這裡」預埋邏輯：若 lastOpenedDate 不是今日，清空 lastPositionByTopic
-  // 為下個批次（位置記憶）做準備
-  (function prepareReadingState() {
-    try {
-      const raw = localStorage.getItem('instanews_reading_state');
-      if (!raw) return;
-      const state = JSON.parse(raw);
-      if (state.lastOpenedDate !== getEffectiveToday()) {
-        state.lastPositionByTopic = {};
-        state.lastOpenedDate = getEffectiveToday();
-        localStorage.setItem('instanews_reading_state', JSON.stringify(state));
-      }
-    } catch (e) { /* ignore */ }
-  })();
+  // 「上次看到這裡」邏輯整合進 bootApp，不再用 IIFE 預埋
+  // 跨日重置：lastOpenedDate 不是今日 → 清空 positionByTopic 與 completedTopics
+  function applyDailyResetIfNeeded(state) {
+    const today = getEffectiveToday();
+    if (state.lastOpenedDate !== today) {
+      state.positionByTopic = {};
+      state.completedTopics = [];
+      state.lastActiveTopic = null;
+      state.lastOpenedDate = today;
+      return true; // 表示有重置
+    }
+    return false;
+  }
 
   // 「載入 cards.json」的 demo 階段實作：
   // 因為 demo 是單檔架構、無真實後端，cards data 是 inline 在 EMBEDDED_DATA。
@@ -1913,6 +2137,35 @@
 
       // 初始化主畫面
       DATA = result.data;
+
+      // === 「上次看到這裡」還原 ===
+      const rState = readReadingState();
+      const wasReset = applyDailyResetIfNeeded(rState);
+      flushReadingState(rState);
+
+      // 還原 lastActiveTopic
+      if (!wasReset && rState.lastActiveTopic) {
+        const idx = DATA.topics.findIndex(t => t.id === rState.lastActiveTopic);
+        if (idx >= 0) currentTopicIdx = idx;
+      }
+      // 還原 positionByTopic：先把 topicLastIdx 從 reading state 載入
+      if (!wasReset) {
+        DATA.topics.forEach((t, i) => {
+          const pos = rState.positionByTopic[t.id];
+          if (typeof pos === 'number') {
+            // 防呆：位置不能超過該主題卡數（含終點卡）
+            const maxIdx = t.cards.length;
+            topicLastIdx[i] = Math.min(pos, maxIdx);
+          }
+        });
+        // 當前主題的位置
+        const curPos = rState.positionByTopic[DATA.topics[currentTopicIdx].id];
+        if (typeof curPos === 'number') {
+          const maxIdx = DATA.topics[currentTopicIdx].cards.length;
+          currentCardIdx = Math.min(curPos, maxIdx);
+        }
+      }
+
       renderTabs();
       renderCards();
       updateFavBadge();
@@ -1924,6 +2177,13 @@
 
       // 埋點
       trackEvent('app_open', { source: 'icon', fromCache: result.fromCache });
+
+      // 檢查是否要顯示教學蒙版（splash 淡出後 + 主畫面就緒）
+      const tutorialDone = localStorage.getItem(TUTORIAL_KEY) === 'true';
+      if (!tutorialDone) {
+        // 給主畫面 0.5 秒喘息再覆蓋上教學
+        setTimeout(() => showTutorial(), 500);
+      }
     } catch (err) {
       console.error('App boot failed:', err);
       splash.classList.add('error');
@@ -1932,6 +2192,195 @@
       trackEvent('cards_load_failed', { error: String(err.message || err) });
     }
   }
+
+
+
+  // ============ Tutorial Overlay (首次教學蒙版) ============
+  const TUTORIAL_KEY = 'instanews_tutorial_completed';
+  const tutorialEl = document.getElementById('tutorial');
+  const tutorialStage = document.getElementById('tutorialStage');
+  const tutorialRing = document.getElementById('tutorialRing');
+  const tutorialText = document.getElementById('tutorialText');
+  const tutorialDots = document.getElementById('tutorialDots');
+  const tutorialHint = document.getElementById('tutorialHint');
+  const tutorialSkipBtn = document.getElementById('tutorialSkip');
+
+  let tutorialStep = 0;  // 1..4
+  let tutorialActive = false;
+
+  // ============ 教學步驟資料層 ============
+  // 加新步驟只要在這陣列加一筆。減步驟刪一筆。順序調整重排即可。
+  // 不需要動 renderTutorialVisual 或其他 JS 邏輯。
+  //
+  // 每步的 visual 物件可選欄位：
+  //   type: 'arrow' (中央箭頭動畫) | 'ring' (框選某元件)
+  //   --- arrow 型 ---
+  //   dir: 'vertical' | 'horizontal'
+  //   --- ring 型 ---
+  //   target: CSS selector，框選對應的主畫面元件（會用 getBoundingClientRect 動態定位）
+  //   withTap: true → 中央額外顯示「點/按」波紋動畫，暗示用戶要點該元件
+  //   shape: 'circle' (預設) | 'rect'（未來可擴充）
+  const TUTORIAL_STEPS = [
+    {
+      text: '上下滑切換同主題的卡片',
+      visual: { type: 'arrow', dir: 'vertical' }
+    },
+    {
+      text: '左右滑切換不同主題',
+      visual: { type: 'arrow', dir: 'horizontal' }
+    },
+    {
+      text: '點愛心或長按卡片來收藏',
+      visual: { type: 'ring', target: '.card.active .card-fav-btn', withTap: true }
+    },
+    {
+      text: '右下角放大鏡看延伸閱讀',
+      visual: { type: 'ring', target: '.card.active .card-ext-btn' }
+    }
+  ];
+
+  function showTutorial() {
+    tutorialActive = true;
+    tutorialStep = 1;
+    tutorialEl.classList.add('show');
+    renderTutorialStep();
+  }
+
+  function renderTutorialStep() {
+    const s = TUTORIAL_STEPS[tutorialStep - 1];
+    if (!s) return;
+
+    // 文字淡出淡入
+    tutorialText.classList.add('fading');
+    setTimeout(() => {
+      tutorialText.textContent = s.text;
+      tutorialText.classList.remove('fading');
+    }, 200);
+
+    // 步驟點
+    tutorialDots.innerHTML = '';
+    for (let i = 1; i <= 4; i++) {
+      const d = document.createElement('span');
+      d.className = 'tutorial-dot' + (i === tutorialStep ? ' active' : '');
+      tutorialDots.appendChild(d);
+    }
+
+    // 引導文字
+    tutorialHint.textContent = tutorialStep === 4 ? '點任意處完成' : '點任意處繼續';
+
+    // 視覺提示
+    renderTutorialVisual(s.visual);
+  }
+
+  // 預先定義可重用的 visual 渲染器
+  const VISUAL_RENDERERS = {
+    arrow(visual) {
+      if (visual.dir === 'vertical') {
+        tutorialStage.innerHTML = `
+          <svg class="tutorial-arrow-vert" viewBox="0 0 60 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M30 20 L18 32 M30 20 L42 32 M30 20 L30 120 M30 120 L18 108 M30 120 L42 108"/>
+          </svg>
+        `;
+      } else if (visual.dir === 'horizontal') {
+        tutorialStage.innerHTML = `
+          <svg class="tutorial-arrow-horiz" viewBox="0 0 160 60" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 30 L32 18 M20 30 L32 42 M20 30 L140 30 M140 30 L128 18 M140 30 L128 42"/>
+          </svg>
+        `;
+      }
+    },
+    ring(visual) {
+      // 如果要顯示中央 tap 動畫
+      if (visual.withTap) {
+        tutorialStage.innerHTML = `
+          <div class="tutorial-tap-hint">
+            <svg viewBox="0 0 70 70" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="35" cy="35" r="6" fill="currentColor"/>
+              <circle class="tap-circle" cx="35" cy="35" r="14" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+        `;
+      }
+      // 動態定位 ring 到目標元件
+      if (visual.target) {
+        positionRingOnElement(visual.target);
+      }
+    }
+  };
+
+  function renderTutorialVisual(visual) {
+    // 重置畫面
+    tutorialStage.innerHTML = '';
+    tutorialRing.style.display = 'none';
+
+    // 取對應 renderer
+    const renderer = VISUAL_RENDERERS[visual.type];
+    if (!renderer) {
+      console.warn('[Tutorial] unknown visual type:', visual.type);
+      return;
+    }
+    renderer(visual);
+  }
+
+  function positionRingOnElement(selector) {
+    const target = document.querySelector(selector);
+    if (!target) {
+      // fallback: 中央
+      tutorialRing.style.display = 'none';
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    const padding = 8;
+    // 取較大邊 + padding 當 ring 直徑
+    const size = Math.max(rect.width, rect.height) + padding * 2;
+    tutorialRing.style.display = 'block';
+    tutorialRing.style.width = size + 'px';
+    tutorialRing.style.height = size + 'px';
+    tutorialRing.style.left = (rect.left + rect.width / 2 - size / 2) + 'px';
+    tutorialRing.style.top = (rect.top + rect.height / 2 - size / 2) + 'px';
+  }
+
+  function advanceTutorial() {
+    if (!tutorialActive) return;
+    if (tutorialStep < 4) {
+      tutorialStep++;
+      renderTutorialStep();
+    } else {
+      completeTutorial();
+    }
+  }
+
+  function completeTutorial() {
+    tutorialActive = false;
+    localStorage.setItem(TUTORIAL_KEY, 'true');
+    tutorialEl.classList.remove('show');
+    setTimeout(() => { tutorialEl.style.display = 'none'; }, 350);
+    trackEvent('tutorial_complete', {});
+  }
+
+  function skipTutorial() {
+    const atStep = tutorialStep;
+    tutorialActive = false;
+    localStorage.setItem(TUTORIAL_KEY, 'true');
+    tutorialEl.classList.remove('show');
+    setTimeout(() => { tutorialEl.style.display = 'none'; }, 350);
+    trackEvent('tutorial_skip', { atStep });
+  }
+
+  // 點任意處進下一步（除跳過按鈕外）
+  tutorialEl.addEventListener('click', (e) => {
+    // 點 skip 按鈕已單獨 handler，這裡只要不是它就 advance
+    if (e.target.closest('.tutorial-skip')) return;
+    advanceTutorial();
+  });
+  tutorialSkipBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    skipTutorial();
+  });
+
+  // 暴露給未來個人頁「重新查看教學」用
+  window.showTutorial = showTutorial;
+
 
   bootApp();
 
@@ -1955,26 +2404,71 @@
     return (d.getMonth() + 1) + '/' + d.getDate();
   }
 
+  // 統一的「✓ 圖示」SVG（手寫感對勾，深色細線）
+  const CHECK_SVG = `<svg class="end-card-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 16.5 L13 23 L26 9"/>
+  </svg>`;
+
+  // 三個 ✓ 並排 (全部看完版)
+  const TRIPLE_CHECK_SVG = `<div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;color:var(--ink-mute);opacity:0.55;">
+    <svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5 L13 23 L26 9"/></svg>
+    <svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5 L13 23 L26 9"/></svg>
+    <svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5 L13 23 L26 9"/></svg>
+  </div>`;
+
   function renderEndCard(topicIdx, topic) {
     const el = document.createElement('article');
     el.className = 'card end-card';
-    el.innerHTML = `
-      <svg class="end-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 6v6l4 2"/>
-      </svg>
-      <div class="end-card-title">今日的${topic.name}新聞已閱畢</div>
-      <div class="end-card-subtitle">想看更早的新聞嗎？</div>
-      <button class="end-card-btn" data-action="history">
-        看 ${formatHistoryDate(1)} 的新聞
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-      </button>
-      <div class="end-card-foot">最多可回溯 7 天</div>
-    `;
-    el.querySelector('.end-card-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      showToast('歷史模式即將推出，目前 demo 僅有一天份內容');
-    });
+
+    // 檢查是否全部看完（demo 階段先停用「全部看完版」，永遠走單主題版）
+    // 未來要重新啟用，把 isAllComplete 還原為原本的計算即可
+    const state = readReadingState();
+    const isAllComplete = false;
+    // 原邏輯（保留參考）：
+    // const isAllComplete = state.completedTopics.length >= 3
+    //   && DATA.topics.every(t => state.completedTopics.includes(t.id));
+
+    if (isAllComplete) {
+      // === 全部看完版 ===
+      const topicNames = DATA.topics.map(t => t.name).join(' / ');
+      const totalCards = DATA.topics.reduce((sum, t) => sum + t.cards.length, 0);
+      // 取本月累積閱讀天數（從成就 counter；目前沒做成就，先寫 placeholder）
+      const monthDays = state.completedTopics.length > 0 ? '1' : '0';  // demo 階段先簡化
+      el.innerHTML = `
+        ${TRIPLE_CHECK_SVG}
+        <div class="end-card-title">今天全部看完了</div>
+        <div class="end-card-subtitle">${topicNames}<br>共 ${totalCards} 張卡</div>
+        <div class="end-card-foot" style="margin-top:18px;">
+          本月累積閱讀 ${monthDays} 天<br>
+          下次更新時間:明天 08:00
+        </div>
+        <button class="end-card-btn" data-action="history" style="margin-top:24px;">
+          看 ${formatHistoryDate(1)} 的新聞
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      `;
+    } else {
+      // === 單主題完成版 ===
+      el.innerHTML = `
+        ${CHECK_SVG}
+        <div class="end-card-title">今日${topic.name}主題已閱畢</div>
+        
+        <button class="end-card-btn" data-action="history" style="margin-top:8px;">
+          看 ${formatHistoryDate(1)} 的新聞
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+        <div class="end-card-foot">最多可回溯 7 天</div>
+      `;
+    }
+
+    // 歷史按鈕（兩版共用）
+    const btn = el.querySelector('.end-card-btn');
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showToast('歷史模式即將推出，目前 demo 僅有一天份內容');
+      });
+    }
     return el;
   }
 
@@ -2112,6 +2606,7 @@
     currentCardIdx = savedIdx;
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
     renderCards();
+    persistCurrentPosition();
   }
 
   function nextCard() {
@@ -2129,9 +2624,15 @@
     if (newCard) {
       recordCardEnter(newCard.id, DATA.topics[currentTopicIdx].id, currentCardIdx);
     } else {
-      // 進入終點卡，先結算上一張
+      // 進入終點卡：結算上一張、標記主題完成
       recordCardLeave();
+      markTopicCompleted(DATA.topics[currentTopicIdx].id);
+      trackEvent('endpoint_card_view', {
+        topic: DATA.topics[currentTopicIdx].id,
+        isAllComplete: readReadingState().completedTopics.length >= 3
+      });
     }
+    persistCurrentPosition();
   }
 
   function prevCard() {
@@ -2148,6 +2649,7 @@
     if (newCard) {
       recordCardEnter(newCard.id, DATA.topics[currentTopicIdx].id, currentCardIdx);
     }
+    persistCurrentPosition();
   }
 
   function transitionCard(fromIdx, toIdx, dir) {
@@ -2502,6 +3004,34 @@
   }
 
 
+  // ============ Reading State 寫入 helpers ============
+  function persistCurrentPosition() {
+    const state = readReadingState();
+    const curTopic = DATA && DATA.topics && DATA.topics[currentTopicIdx];
+    if (!curTopic) return;
+    state.positionByTopic[curTopic.id] = currentCardIdx;
+    state.lastActiveTopic = curTopic.id;
+    state.lastOpenedDate = getEffectiveToday();
+    writeReadingState(state);  // 節流寫入
+  }
+
+  // 主題完成：用戶滑到終點卡時呼叫
+  function markTopicCompleted(topicId) {
+    const state = readReadingState();
+    if (!state.completedTopics.includes(topicId)) {
+      state.completedTopics.push(topicId);
+      flushReadingState(state);  // 立刻寫入（重要時刻）
+      trackEvent('topic_complete', {
+        topic: topicId,
+        cardCount: (DATA.topics.find(t => t.id === topicId) || {}).cards?.length || 0
+      });
+      // 三主題全完成
+      if (state.completedTopics.length >= 3) {
+        trackEvent('all_topics_complete', { date: getEffectiveToday() });
+      }
+    }
+  }
+
   // ============ 卡片瀏覽計時 (for card_view / card_complete / card_skip) ============
   let _currentCardEnterTime = null;
   let _currentCardViewed = null;  // {cardId, topic, position}
@@ -2730,6 +3260,126 @@
 
 
 
+  function initTutorialPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-panel-header">
+        <div class="debug-panel-title">🎓 Tutorial</div>
+      </div>
+      <div class="debug-panel-list" id="dbgTutList"></div>
+      <div class="debug-panel-meta">
+        <button id="dbgTutReset" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-right:4px;font-family:inherit;">重設 (下次顯示)</button>
+        <button id="dbgTutShow" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">立刻顯示</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    function render() {
+      const done = localStorage.getItem(TUTORIAL_KEY) === 'true';
+      const list = document.getElementById('dbgTutList');
+      list.innerHTML = `
+        <div class="ev">
+          <span class="ev-name">tutorial_completed</span>
+          <div class="ev-props">${done ? 'true ✓' : 'false / 未設定'}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">當前狀態</span>
+          <div class="ev-props">${tutorialActive ? '教學顯示中 (step ' + tutorialStep + ')' : '主畫面'}</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('dbgTutReset').addEventListener('click', () => {
+      localStorage.removeItem(TUTORIAL_KEY);
+      render();
+      alert('已重設。重新整理頁面看效果');
+    });
+
+    document.getElementById('dbgTutShow').addEventListener('click', () => {
+      showTutorial();
+      render();
+    });
+
+    render();
+    setInterval(render, 500);
+  }
+
+  function initReadingPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-panel-header">
+        <div class="debug-panel-title">📖 Reading</div>
+        <div class="debug-panel-actions">
+          <button id="dbgRsReset">清空</button>
+        </div>
+      </div>
+      <div class="debug-panel-list" id="dbgRsList"></div>
+      <div class="debug-panel-meta">
+        <button id="dbgRsForceEnd" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-right:4px;font-family:inherit;">跳當前主題終點</button>
+        <button id="dbgRsForceAllEnd" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;" title="全部看完版已停用，僅標記 state">標記全完成</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    function render() {
+      const state = readReadingState();
+      const list = document.getElementById('dbgRsList');
+      const today = getEffectiveToday();
+      list.innerHTML = `
+        <div class="ev">
+          <span class="ev-name">lastOpenedDate</span>
+          <div class="ev-props">${state.lastOpenedDate || '(無)'} ${state.lastOpenedDate === today ? '✓' : ''}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">lastActiveTopic</span>
+          <div class="ev-props">${state.lastActiveTopic || '(無)'}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">positionByTopic</span>
+          <div class="ev-props">${JSON.stringify(state.positionByTopic, null, 0)}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">completedTopics</span>
+          <div class="ev-props">${state.completedTopics.length === 0 ? '(空)' : state.completedTopics.join(', ')}</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('dbgRsReset').addEventListener('click', () => {
+      if (confirm('清空 reading state？頁面會重新載入')) {
+        localStorage.removeItem(READING_STATE_KEY);
+        location.reload();
+      }
+    });
+
+    document.getElementById('dbgRsForceEnd').addEventListener('click', () => {
+      // 跳到當前主題的終點卡
+      const topic = DATA.topics[currentTopicIdx];
+      currentCardIdx = topic.cards.length;
+      markTopicCompleted(topic.id);
+      persistCurrentPosition();
+      renderCards();
+      render();
+    });
+
+    document.getElementById('dbgRsForceAllEnd').addEventListener('click', () => {
+      // 把三主題都標為完成
+      const state = readReadingState();
+      state.completedTopics = DATA.topics.map(t => t.id);
+      flushReadingState(state);
+      // 跳到當前主題終點卡（會顯示全部看完版）
+      currentCardIdx = DATA.topics[currentTopicIdx].cards.length;
+      renderCards();
+      render();
+    });
+
+    // 每秒刷新一次（便於觀察 throttle 寫入）
+    render();
+    setInterval(render, 1000);
+  }
+
   function initCachePanel() {
     const panel = document.createElement('div');
     panel.className = 'debug-panel';
@@ -2823,6 +3473,14 @@
     const debugMode = params.get('debug');
     if (debugMode === 'cache') {
       initCachePanel();
+      return;
+    }
+    if (debugMode === 'reading') {
+      initReadingPanel();
+      return;
+    }
+    if (debugMode === 'tutorial') {
+      initTutorialPanel();
       return;
     }
     if (debugMode !== '1') return;
