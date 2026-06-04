@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#FAF8F3">
 <title>InstaNews · 印思新聞</title>
-<meta name="version" content="demo-v0.13.3">
+<meta name="version" content="demo-v0.14.6">
 <meta name="version-date" content="2026-05-18">
 <meta name="description" content="InstaNews 印思新聞 demo - 讓你 30 秒跟上世界，還能跟同事聊得起來">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1876,6 +1876,101 @@
     letter-spacing: 0.12em;
     margin-top: 4px;
   }
+
+  /* ===== 分享按鈕（卡片右下角，放大鏡左側） ===== */
+  .card-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-share-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 30px;
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    flex-shrink: 0;
+  }
+  .card-share-btn:hover, .card-share-btn:active {
+    background: rgba(0,0,0,0.04);
+    border-color: var(--ink-mute);
+  }
+  .card-share-btn svg { width: 14px; height: 14px; }
+  .card-share-btn.busy { opacity: 0.35; pointer-events: none; }
+
+  /* 延伸卡 footer 改 flex，右側放分享 */
+  .ext-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .ext-share-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, opacity 0.2s;
+  }
+  .ext-share-btn:hover { background: rgba(0,0,0,0.04); }
+  .ext-share-btn svg { width: 13px; height: 13px; }
+  .ext-share-btn.busy { opacity: 0.35; pointer-events: none; }
+
+  /* ===== 分享預覽 Modal（桌面 fallback） ===== */
+  .share-box {
+    max-width: 340px;
+    padding: 20px;
+    position: relative;
+  }
+  .share-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    z-index: 1;
+  }
+  .share-close svg { width: 18px; height: 18px; }
+  .share-preview-img {
+    display: block;
+    max-width: 100%;
+    max-height: 56vh;
+    width: auto;
+    margin: 14px auto 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+
+  /* ===== 主題 tab 紅點（未看完提示，印泥暗紅） ===== */
+  .tab { position: relative; }
+  .tab-dot {
+    position: absolute;
+    top: 3px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-tw);
+  }
 </style>
 </head>
 <body>
@@ -2169,6 +2264,17 @@
       <button class="confirm-btn" id="alarmFormCancel">取消</button>
       <button class="confirm-btn primary" id="alarmFormConfirm">確認</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== Share Preview Dialog (桌面 fallback) ===== -->
+<div class="confirm-dialog" id="shareModal">
+  <div class="confirm-box share-box">
+    <button class="share-close" id="shareCloseBtn" aria-label="關閉">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <img class="share-preview-img" id="sharePreviewImg" alt="分享圖卡預覽" />
+    <button class="confirm-btn primary" id="shareDownloadBtn" style="width:100%;">下載圖卡</button>
   </div>
 </div>
 
@@ -3165,6 +3271,14 @@
       // 當日開啟 App 即點亮閱讀日曆（同日去重）
       recordDailyCheckIn();
 
+      // 紅點：記錄開啟時哪些主題未看完（輔助分析紅點對看完率的影響）
+      const _dotCompleted = readReadingState().completedTopics || [];
+      const _dotTopics = getDisplayTopics().filter(t => !_dotCompleted.includes(t.id)).map(t => t.id);
+      if (_dotTopics.length > 0) {
+        trackEvent('red_dot_shown', { topics: _dotTopics });
+      }
+      // TODO: 正式 App 加系統 icon badge（Expo Notifications setBadgeCountAsync）
+
       // 檢查是否要顯示教學蒙版（splash 淡出後 + 主畫面就緒）
       const tutorialDone = localStorage.getItem(TUTORIAL_KEY) === 'true';
       if (!tutorialDone) {
@@ -4130,11 +4244,329 @@
   });
 
 
+
+
+  // ============ 分享圖卡模組 (1080×1080 Canvas) ============
+  const SHARE_FORCE_FALLBACK_KEY = 'instanews_force_share_fallback';
+
+  // 中英混排換行（Canvas 不自動換行）
+  // 規則：英文單字 / 數字（含 3.5-3.75%、m/s 等）為不可拆 token，中文逐字；
+  //       避頭點：、。，等標點不落行首；超寬 token（超長英文）逐字硬拆兜底
+  function wrapText(ctx, text, maxWidth) {
+    const NO_LINE_START = '、。，．！？：；）」』%';
+    const lines = [];
+    String(text).split('\n').forEach(par => {
+      const tokens = par.match(/[A-Za-z0-9][A-Za-z0-9.%\-:/]*|\s+|[\s\S]/g) || [];
+      let line = '';
+      for (const tk of tokens) {
+        if (line && ctx.measureText(line + tk).width > maxWidth) {
+          // 避頭點：單一標點寬容掛在行尾，不換行首
+          if (tk.length === 1 && NO_LINE_START.includes(tk)) {
+            line += tk;
+            continue;
+          }
+          lines.push(line);
+          line = /^\s+$/.test(tk) ? '' : tk;  // 行首不留空白
+        } else {
+          line += tk;
+        }
+        // token 自身超過行寬（超長英文字串）→ 逐字硬拆兜底
+        while (ctx.measureText(line).width > maxWidth && line.length > 1) {
+          let cut = line.length - 1;
+          while (cut > 1 && ctx.measureText(line.slice(0, cut)).width > maxWidth) cut--;
+          lines.push(line.slice(0, cut));
+          line = line.slice(cut);
+        }
+      }
+      lines.push(line);
+    });
+    return lines;
+  }
+
+  // 手刻圓角矩形（相容性高於 ctx.roundRect）
+  function traceRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // 新聞卡圖卡（原生卡 / 延伸卡共用）— 1080×1920 直式
+  // 版面：頂部頁眉（tag 左 / 日期右 + 細線）錨住版面，中段標題+內文置中，底部品牌區
+  async function generateShareImage({ tag, title, content, source, date }) {
+    // 載入字體：傳實際文字觸發 CJK subset 載入，避免 fallback 字體
+    try {
+      await Promise.all([
+        document.fonts.load('700 76px "Noto Serif TC"', title + 'InstaNews 印思新聞'),
+        document.fonts.load('400 58px "Noto Sans TC"', content),
+        document.fonts.load('500 30px "Noto Sans TC"', tag + '來源' + source + (date || ''))
+      ]);
+      await document.fonts.ready;
+    } catch (e) { /* 字體載入失敗時退用系統字 */ }
+
+    const W = 1080, H = 1920, M = 100;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // 背景：米白紙感
+    ctx.fillStyle = '#FAF8F3';
+    ctx.fillRect(0, 0, W, H);
+
+    // ===== 頂部頁眉：tag 左、日期右、細線 =====
+    ctx.fillStyle = '#8B847C';
+    ctx.font = '500 30px "Noto Sans TC", sans-serif';
+    ctx.fillText(tag, M, 180);
+    if (date) {
+      ctx.textAlign = 'right';
+      ctx.fillText(date, W - M, 180);
+      ctx.textAlign = 'left';
+    }
+    ctx.strokeStyle = '#E8E3DA';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(M, 218);
+    ctx.lineTo(W - M, 218);
+    ctx.stroke();
+
+    // ===== 量測中段內容（標題 + 內文） =====
+    let titleSize = 76;
+    let titleLines;
+    while (true) {
+      ctx.font = '700 ' + titleSize + 'px "Noto Serif TC", serif';
+      titleLines = wrapText(ctx, title, W - M * 2);
+      if (titleLines.length <= 4 || titleSize <= 60) break;
+      titleSize -= 4;
+    }
+    if (titleLines.length > 4) titleLines = titleLines.slice(0, 4);  // 兜底
+    const titleLH = Math.round(titleSize * 1.42);
+
+    ctx.font = '400 58px "Noto Sans TC", sans-serif';
+    let bodyLines = wrapText(ctx, content, W - M * 2);
+    const bodyLH = 104;
+    const gapTitleBody = 112;
+
+    // 內容可用區：頁眉之下、品牌區之上
+    const cTop = 320;
+    const cBottom = H - 420;
+    let blockH = titleLines.length * titleLH + gapTitleBody + bodyLines.length * bodyLH;
+    // 爆版兜底：截行 + 省略號
+    while (blockH > cBottom - cTop && bodyLines.length > 1) {
+      bodyLines.pop();
+      bodyLines[bodyLines.length - 1] = bodyLines[bodyLines.length - 1].slice(0, -1) + '…';
+      blockH = titleLines.length * titleLH + gapTitleBody + bodyLines.length * bodyLH;
+    }
+
+    // 光學置中：上方留白佔 46%（純幾何置中會顯得偏下）
+    let y = cTop + Math.max(0, (cBottom - cTop - blockH) * 0.46);
+
+    // 標題
+    ctx.fillStyle = '#1A1815';
+    ctx.font = '700 ' + titleSize + 'px "Noto Serif TC", serif';
+    y += titleSize;  // 第一行 baseline
+    titleLines.forEach(l => { ctx.fillText(l, M, y); y += titleLH; });
+
+    // 內文（最後一行標題 baseline + gap）
+    y = y - titleLH + gapTitleBody + 58;
+    ctx.font = '400 58px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#4A4642';
+    bodyLines.forEach(l => { ctx.fillText(l, M, y); y += bodyLH; });
+
+    // ===== 品牌區（固定底部，避開 IG Story 底部 UI） =====
+    ctx.strokeStyle = '#E8E3DA';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(M, H - 310);
+    ctx.lineTo(W - M, H - 310);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1A1815';
+    ctx.font = '700 44px "Noto Serif TC", serif';
+    ctx.fillText('InstaNews 印思新聞', M, H - 220);
+
+    ctx.fillStyle = '#8B847C';
+    ctx.font = '400 30px "Noto Sans TC", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('來源:' + source, W - M, H - 220);
+    ctx.textAlign = 'left';
+
+    return canvas;
+  }
+
+  // 成就圖卡（生成器本批先做；UI 掛接留給成就系統批次）— 1080×1920 直式
+  async function generateAchievementShareImage({ name, desc }) {
+    try {
+      await Promise.all([
+        document.fonts.load('700 88px "Noto Serif TC"', name + '印 InstaNews 印思新聞'),
+        document.fonts.load('400 44px "Noto Sans TC"', desc + '30 秒跟上世界')
+      ]);
+      await document.fonts.ready;
+    } catch (e) {}
+
+    const W = 1080, H = 1920, M = 100;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#FAF8F3';
+    ctx.fillRect(0, 0, W, H);
+
+    // 印章 icon 暫代版：朱砂圓角方印 + 白「印」字
+    // TODO: 成就批次定稿各成就專屬印章後替換
+    const stamp = 230;
+    const stampY = 560;
+    traceRoundRect(ctx, (W - stamp) / 2, stampY, stamp, stamp, 30);
+    ctx.fillStyle = '#B0533F';
+    ctx.fill();
+    ctx.fillStyle = '#FAF8F3';
+    ctx.font = '700 140px "Noto Serif TC", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('印', W / 2, stampY + stamp / 2 + 10);
+
+    // 成就名（置中）
+    ctx.fillStyle = '#1A1815';
+    ctx.font = '700 88px "Noto Serif TC", serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(name, W / 2, 1010);
+
+    // 描述（置中，最多 2 行）
+    ctx.fillStyle = '#4A4642';
+    ctx.font = '400 44px "Noto Sans TC", sans-serif';
+    const descLines = wrapText(ctx, desc, W - M * 2 - 80).slice(0, 2);
+    let dy = 1110;
+    descLines.forEach(l => { ctx.fillText(l, W / 2, dy); dy += 70; });
+    ctx.textAlign = 'left';
+
+    // 品牌 + slogan（左下，避開 IG Story 底部 UI）
+    ctx.strokeStyle = '#E8E3DA';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(M, H - 310);
+    ctx.lineTo(W - M, H - 310);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1A1815';
+    ctx.font = '700 44px "Noto Serif TC", serif';
+    ctx.fillText('InstaNews 印思新聞', M, H - 220);
+    ctx.fillStyle = '#8B847C';
+    ctx.font = '400 32px "Noto Sans TC", sans-serif';
+    ctx.fillText('30 秒跟上世界', M, H - 158);
+
+    return canvas;
+  }
+
+  // ===== 分享流程 =====
+  let _shareBusy = false;
+  let _previewCardId = null;
+  let _previewDownloaded = false;
+
+  async function runShareFlow(payload, cardId, btnEl) {
+    if (_shareBusy) return;
+    _shareBusy = true;
+    if (btnEl) btnEl.classList.add('busy');
+    try {
+      const canvas = await generateShareImage(payload);
+      await deliverShareImage(canvas, cardId);
+    } catch (err) {
+      console.warn('[Share] 生成失敗', err);
+      showToast('圖卡生成失敗');
+    }
+    if (btnEl) btnEl.classList.remove('busy');
+    _shareBusy = false;
+  }
+
+  async function deliverShareImage(canvas, cardId) {
+    const forceFallback = sessionStorage.getItem(SHARE_FORCE_FALLBACK_KEY) === '1';
+    if (!forceFallback && navigator.canShare) {
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      const file = new File([blob], 'instanews.png', { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          trackEvent('share_card_completed', { cardId, method: 'webshare' });
+        } catch (e) {
+          if (e && e.name === 'AbortError') {
+            trackEvent('share_card_cancelled', { cardId });
+          }
+        }
+        return;
+      }
+    }
+    // Fallback：預覽 + 下載
+    openSharePreview(canvas.toDataURL('image/png'), cardId);
+  }
+
+  function openSharePreview(dataUrl, cardId) {
+    _previewCardId = cardId;
+    _previewDownloaded = false;
+    document.getElementById('sharePreviewImg').src = dataUrl;
+    document.getElementById('shareModal').classList.add('show');
+  }
+  function closeSharePreview() {
+    document.getElementById('shareModal').classList.remove('show');
+    if (!_previewDownloaded && _previewCardId) {
+      trackEvent('share_card_cancelled', { cardId: _previewCardId });
+    }
+    _previewCardId = null;
+  }
+  document.getElementById('shareCloseBtn').addEventListener('click', closeSharePreview);
+  document.getElementById('shareDownloadBtn').addEventListener('click', async () => {
+    const img = document.getElementById('sharePreviewImg');
+    try {
+      // dataURL → Blob URL：比 dataURL 直接下載可靠（長 dataURL 部分瀏覽器會靜默失敗）
+      const blob = await (await fetch(img.src)).blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'instanews_' + (_previewCardId || 'card') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      _previewDownloaded = true;
+      trackEvent('share_card_completed', { cardId: _previewCardId, method: 'download' });
+    } catch (e) {
+      // 沙盒環境（如預覽 iframe）會擋下載
+      showToast('此環境無法下載，請在瀏覽器中開啟或長按圖片另存');
+    }
+  });
+
+  // 入口：原生卡
+  function shareNativeCard(card, topic, btnEl) {
+    trackEvent('share_card', { cardId: card.id, topic: topic.id, cardType: 'native' });
+    runShareFlow({
+      tag: topic.name,
+      title: card.title,
+      content: card.content,
+      source: card.source,
+      date: formatDate(card.date)
+    }, card.id, btnEl);
+  }
+
+  // 入口：延伸卡（無獨立 id，用 parentId_extN）
+  function shareExtCard(parentCard, ext, idx, btnEl) {
+    const extId = parentCard.id + '_ext' + (idx + 1);
+    trackEvent('share_card', { cardId: extId, topic: '', cardType: 'extension' });
+    runShareFlow({
+      tag: '延伸閱讀 · ' + (TYPE_LABELS[ext.type] || ext.type),
+      title: ext.title,
+      content: ext.content,
+      source: ext.source_note || '綜合多家媒體報導整理',
+      date: formatDate(parentCard.date)
+    }, extId, btnEl);
+  }
+
+
   bootApp();
 
 
   function renderTabs() {
     tabs.innerHTML = '';
+    const _completedForDots = readReadingState().completedTopics || [];
     const displayTopics = getDisplayTopics();
     const currentId = DATA.topics[currentTopicIdx]?.id;
     displayTopics.forEach(t => {
@@ -4143,7 +4575,9 @@
       const btn = document.createElement('button');
       btn.className = 'tab' + (t.id === currentId ? ' active' : '');
       btn.dataset.topic = t.id;
-      btn.innerHTML = `<span class="emoji">${t.emoji}</span>${t.name}`;
+      // 紅點：該主題今日未看完 → 顯示（讀 completedTopics，新一天重置時自動恢復）
+      const dotHtml = _completedForDots.includes(t.id) ? '' : '<span class="tab-dot"></span>';
+      btn.innerHTML = `<span class="emoji">${t.emoji}</span>${t.name}${dotHtml}`;
       btn.onclick = () => switchTopic(origIdx);
       tabs.appendChild(btn);
     });
@@ -4265,7 +4699,16 @@
         <p class="card-content">${escapeHtml(card.content)}</p>
         <div class="card-footer">
           <span class="card-source">${escapeHtml(card.source)}</span>
-          ${extBtnHtml}
+          <span class="card-footer-actions">
+            <button class="card-share-btn" aria-label="分享" data-card-id="${card.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/>
+                <path d="M16 6l-4-4-4 4"/>
+                <path d="M12 2v13"/>
+              </svg>
+            </button>
+            ${extBtnHtml}
+          </span>
         </div>
       `;
       // 愛心點擊（不要觸發長按 / 滑動）
@@ -4298,6 +4741,16 @@
         });
         extBtn.addEventListener('mousedown', e => e.stopPropagation());
         extBtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+      }
+      // 分享按鈕（不要被長按 / 滑動干擾）
+      const shareBtn = el.querySelector('.card-share-btn');
+      if (shareBtn) {
+        shareBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          shareNativeCard(card, topic, shareBtn);
+        });
+        shareBtn.addEventListener('mousedown', e => e.stopPropagation());
+        shareBtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
       }
       attachLongPress(el, card);
       stage.appendChild(el);
@@ -4811,6 +5264,8 @@
       if (state.completedTopics.length >= 3) {
         trackEvent('all_topics_complete', { date: getEffectiveToday() });
       }
+      // 即時消除該主題 tab 紅點
+      renderTabs();
     }
   }
 
@@ -4893,8 +5348,24 @@
         <h2 class="ext-card-title">${escapeHtml(ext.title)}</h2>
         <div class="ext-card-divider"></div>
         <p class="ext-card-content">${escapeHtml(ext.content)}</p>
-        <div class="ext-card-footer">${escapeHtml(ext.source_note || '')}</div>
+        <div class="ext-card-footer">
+          <span>${escapeHtml(ext.source_note || '')}</span>
+          <button class="ext-share-btn" aria-label="分享">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/>
+              <path d="M16 6l-4-4-4 4"/>
+              <path d="M12 2v13"/>
+            </svg>
+          </button>
+        </div>
       `;
+      const extShareBtn = el.querySelector('.ext-share-btn');
+      if (extShareBtn) {
+        extShareBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          shareExtCard(currentExt.card, ext, i, extShareBtn);
+        });
+      }
       extStage.appendChild(el);
     });
     renderExtIndicator();
@@ -5106,6 +5577,105 @@
         localStorage.removeItem(TOPICS_KEY);
         render();
       }
+    });
+
+    render();
+    setInterval(render, 1000);
+  }
+
+  function initSharePanel() {
+    const panel = document.createElement('div');
+    panel.className = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-panel-header">
+        <div class="debug-panel-title">📤 Share / 紅點</div>
+      </div>
+      <div class="debug-panel-list" id="dbgShList"></div>
+      <div class="debug-panel-meta" style="display:flex;flex-wrap:wrap;gap:4px;">
+        <button id="dbgShNative" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">預覽當前卡</button>
+        <button id="dbgShExt" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">預覽延伸卡</button>
+        <button id="dbgShAch" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">預覽成就卡</button>
+        <button id="dbgShFb" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">Fallback 切換</button>
+        <button id="dbgShDone" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">標記當前主題完成</button>
+        <button id="dbgShReset" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">清空完成狀態</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    function getCurrentCard() {
+      const topic = DATA.topics[currentTopicIdx];
+      const idx = Math.min(currentCardIdx, topic.cards.length - 1);
+      return { topic, card: topic.cards[idx] };
+    }
+
+    function render() {
+      const fb = sessionStorage.getItem(SHARE_FORCE_FALLBACK_KEY) === '1';
+      const completed = readReadingState().completedTopics || [];
+      const dotted = getDisplayTopics().filter(t => !completed.includes(t.id)).map(t => t.name);
+      const { card } = getCurrentCard();
+      document.getElementById('dbgShList').innerHTML = `
+        <div class="ev">
+          <span class="ev-name">當前卡</span>
+          <div class="ev-props">${card.id}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">強制 Fallback</span>
+          <div class="ev-props">${fb ? 'ON（必走預覽+下載）' : 'OFF（行動端走 Web Share）'}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">紅點中的主題</span>
+          <div class="ev-props">${dotted.length > 0 ? dotted.join('、') : '(無，全部已看完)'}</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('dbgShNative').addEventListener('click', async () => {
+      const { topic, card } = getCurrentCard();
+      const canvas = await generateShareImage({
+        tag: topic.name, title: card.title, content: card.content, source: card.source,
+        date: formatDate(card.date)
+      });
+      openSharePreview(canvas.toDataURL('image/png'), card.id);
+    });
+
+    document.getElementById('dbgShExt').addEventListener('click', async () => {
+      const { card } = getCurrentCard();
+      const ext = card.extensions && card.extensions[0];
+      if (!ext) { alert('此卡無延伸卡，換一張試'); return; }
+      const canvas = await generateShareImage({
+        tag: '延伸閱讀 · ' + (TYPE_LABELS[ext.type] || ext.type),
+        title: ext.title, content: ext.content,
+        source: ext.source_note || '綜合多家媒體報導整理',
+        date: formatDate(card.date)
+      });
+      openSharePreview(canvas.toDataURL('image/png'), card.id + '_ext1');
+    });
+
+    document.getElementById('dbgShAch').addEventListener('click', async () => {
+      const canvas = await generateAchievementShareImage({
+        name: '博學多才',
+        desc: '在 InstaNews 滑完 2,000 張新聞卡'
+      });
+      openSharePreview(canvas.toDataURL('image/png'), 'achievement_sample');
+    });
+
+    document.getElementById('dbgShFb').addEventListener('click', () => {
+      const cur = sessionStorage.getItem(SHARE_FORCE_FALLBACK_KEY) === '1';
+      sessionStorage.setItem(SHARE_FORCE_FALLBACK_KEY, cur ? '0' : '1');
+      render();
+    });
+
+    document.getElementById('dbgShDone').addEventListener('click', () => {
+      markTopicCompleted(DATA.topics[currentTopicIdx].id);
+      render();
+    });
+
+    document.getElementById('dbgShReset').addEventListener('click', () => {
+      const state = readReadingState();
+      state.completedTopics = [];
+      flushReadingState(state);
+      renderTabs();
+      render();
     });
 
     render();
@@ -5426,6 +5996,10 @@
     }
     if (debugMode === 'calendar') {
       initCalendarPanel();
+      return;
+    }
+    if (debugMode === 'share') {
+      initSharePanel();
       return;
     }
     if (debugMode === 'profile') {
