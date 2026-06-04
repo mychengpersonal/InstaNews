@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#FAF8F3">
 <title>InstaNews · 印思新聞</title>
-<meta name="version" content="demo-v0.10.3">
+<meta name="version" content="demo-v0.12.2">
 <meta name="version-date" content="2026-05-18">
 <meta name="description" content="InstaNews 印思新聞 demo - 讓你 30 秒跟上世界，還能跟同事聊得起來">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,6 +71,33 @@
     justify-content: space-between;
     flex-shrink: 0;
   }
+  .header-icons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  /* 頭像 icon 樣式 — 灰色實心圓底 + 線條人形 */
+  .icon-btn.avatar-btn {
+    position: relative;
+  }
+  .icon-btn.avatar-btn .avatar-default {
+    width: 28px;
+    height: 28px;
+    background: var(--rule);
+    border-radius: 50%;
+    color: var(--ink-mute);
+    padding: 5px;
+    box-sizing: border-box;
+  }
+  .icon-btn.avatar-btn .avatar-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: none;
+  }
+  .icon-btn.avatar-btn.logged-in .avatar-default { display: none; }
+  .icon-btn.avatar-btn.logged-in .avatar-img { display: block; }
 
   .masthead {
     font-family: var(--serif);
@@ -1170,6 +1197,582 @@
     color: rgba(255,255,255,0.55);
     letter-spacing: 0.15em;
   }
+
+  /* ===== Profile Modal (全螢幕滑入式) ===== */
+  .profile-modal {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 150;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .profile-modal.show { transform: translateX(0); }
+
+  /* 子頁滑入動畫 (push 進來) */
+  .profile-subpage {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+  }
+  .profile-subpage.show { transform: translateX(0); }
+
+  /* 共用 subheader (返回 + 標題) */
+  .pf-subheader {
+    padding: 18px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .pf-back-btn {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-soft);
+  }
+  .pf-back-btn svg { width: 22px; height: 22px; }
+  .pf-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: 0.05em;
+  }
+
+  /* 個人頁主畫面內容 */
+  .pf-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 40px;
+  }
+  .pf-user-section {
+    padding: 32px 24px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--rule);
+  }
+  .pf-avatar-big {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--rule);
+    display: grid;
+    place-items: center;
+    color: var(--ink-mute);
+    overflow: hidden;
+  }
+  .pf-avatar-big img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pf-avatar-big svg {
+    width: 42px;
+    height: 42px;
+  }
+  .pf-name {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--ink);
+    margin-bottom: 4px;
+    letter-spacing: 0.04em;
+  }
+  .pf-email {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-mute);
+    margin-bottom: 18px;
+  }
+  .pf-login-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 10px 20px;
+    border-radius: 24px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .pf-login-btn:hover { background: rgba(0,0,0,0.03); }
+  .pf-login-btn svg { width: 18px; height: 18px; }
+  .pf-logout-btn {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+  .pf-logout-btn:hover { background: rgba(0,0,0,0.03); }
+
+  /* 個人頁的菜單列表 */
+  .pf-group {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .pf-group:last-child { border-bottom: none; }
+  .pf-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    gap: 14px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+  }
+  .pf-item:hover { background: rgba(0,0,0,0.025); }
+  .pf-item-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+  }
+  .pf-item-label {
+    flex: 1;
+  }
+  .pf-item-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--ink-mute);
+    opacity: 0.6;
+  }
+  .pf-version {
+    text-align: center;
+    padding: 24px 20px;
+    color: var(--ink-mute);
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ===== Toggle (用在通知設定 / 主題管理) ===== */
+  .toggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: var(--rule);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.25s;
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.25s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .toggle.on {
+    background: var(--ink);
+  }
+  .toggle.on::after {
+    left: 20px;
+  }
+
+  /* ===== 通知設定 / 主題管理 共用列表 ===== */
+  .pf-section {
+    padding: 18px 20px 14px;
+  }
+  .pf-section-title {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .pf-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    gap: 14px;
+  }
+  .pf-row + .pf-row {
+    border-top: 1px solid var(--rule);
+  }
+  .pf-row-label {
+    flex: 1;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .pf-row-time {
+    position: relative;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    min-width: 64px;
+    justify-content: center;
+  }
+  .pf-row-time:hover { background: rgba(0,0,0,0.04); }
+  .pf-row-time .time-display {
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    user-select: none;
+  }
+  /* 隱形覆蓋整個 label 區域的 time input：點任何位置都會觸發 */
+  .pf-row-time input[type="time"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    color: transparent;
+  }
+  /* 隱藏原生 time picker indicator (時鐘 icon) */
+  .pf-row-time input[type="time"]::-webkit-calendar-picker-indicator {
+    background: transparent;
+    cursor: pointer;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+  .pf-row-time input[type="time"]::-webkit-datetime-edit,
+  .pf-row-time input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  .pf-row-time input[type="time"]::-webkit-datetime-edit-text,
+  .pf-row-time input[type="time"]::-webkit-datetime-edit-hour-field,
+  .pf-row-time input[type="time"]::-webkit-datetime-edit-minute-field,
+  .pf-row-time input[type="time"]::-webkit-datetime-edit-ampm-field {
+    color: transparent;
+    background: transparent;
+  }
+
+  /* 鬧鐘列表 */
+  .alarm-list {
+    margin-top: 4px;
+  }
+  .alarm-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .alarm-item:hover { background: rgba(0,0,0,0.02); }
+  .alarm-time {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+  .alarm-label {
+    flex: 1;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .alarm-delete {
+    background: transparent;
+    border: none;
+    color: var(--ink-mute);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+  }
+  .alarm-delete:hover { color: var(--accent-tw); background: rgba(0,0,0,0.04); }
+  .alarm-delete svg { width: 16px; height: 16px; }
+  .alarm-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    background: transparent;
+    border: 1px dashed var(--rule);
+    border-radius: 8px;
+    color: var(--ink-soft);
+    font-family: var(--sans);
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+  }
+  .alarm-add:hover { background: rgba(0,0,0,0.02); border-color: var(--ink-mute); }
+
+  /* 底部提示文字 */
+  .pf-footnote {
+    padding: 24px 20px;
+    text-align: center;
+    color: var(--ink-mute);
+    font-family: var(--sans);
+    font-size: 12px;
+    line-height: 1.6;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== Confirm Dialog (登入提示、刪除確認) ===== */
+  .confirm-dialog {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .confirm-dialog.show { display: flex; }
+  .confirm-box {
+    background: var(--bg);
+    border-radius: 12px;
+    max-width: 320px;
+    width: 100%;
+    padding: 24px;
+    text-align: center;
+  }
+  .confirm-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .confirm-msg {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .confirm-btn {
+    padding: 9px 20px;
+    border-radius: 20px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink);
+    letter-spacing: 0.05em;
+    min-width: 80px;
+  }
+  .confirm-btn.primary {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .confirm-btn:hover { background: rgba(0,0,0,0.04); }
+  .confirm-btn.primary:hover { background: #000; }
+
+  /* ===== 新增/編輯鬧鐘 dialog (跟 confirm 共用樣式但表單版) ===== */
+  .form-dialog .confirm-box {
+    max-width: 320px;
+    text-align: left;
+  }
+  .form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .form-row label {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    width: 50px;
+    flex-shrink: 0;
+  }
+  .form-row input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink);
+    background: #fff;
+  }
+  .form-row input:focus {
+    outline: none;
+    border-color: var(--ink-soft);
+  }
+
+  /* ===== 關於頁文字內容 ===== */
+  .about-content {
+    padding: 24px 24px 40px;
+    font-family: var(--serif);
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.85;
+    letter-spacing: 0.02em;
+  }
+  .about-content p {
+    margin-bottom: 14px;
+  }
+  .about-content .placeholder {
+    color: var(--ink-mute);
+    font-style: italic;
+  }
+  .about-brand {
+    text-align: center;
+    padding: 32px 20px 12px;
+  }
+  .about-brand-en {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 24px;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+  .about-brand-zh {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink-soft);
+    letter-spacing: 0.2em;
+    margin-top: 4px;
+  }
+  .about-brand-ver {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 8px;
+    letter-spacing: 0.1em;
+  }
+
+  /* 鬧鐘表單時間欄 (跟 pf-row-time 同樣處理但版面不同) */
+  .form-time-picker {
+    flex: 1;
+    position: relative;
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+  }
+  .form-time-picker:hover { border-color: var(--ink-mute); }
+  .form-time-picker .time-display {
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    user-select: none;
+  }
+  .form-time-picker input[type="time"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    color: transparent;
+  }
+  .form-time-picker input[type="time"]::-webkit-calendar-picker-indicator {
+    background: transparent;
+    cursor: pointer;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+  .form-time-picker input[type="time"]::-webkit-datetime-edit,
+  .form-time-picker input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  .form-time-picker input[type="time"]::-webkit-datetime-edit-text,
+  .form-time-picker input[type="time"]::-webkit-datetime-edit-hour-field,
+  .form-time-picker input[type="time"]::-webkit-datetime-edit-minute-field,
+  .form-time-picker input[type="time"]::-webkit-datetime-edit-ampm-field {
+    color: transparent;
+    background: transparent;
+  }
+
+  /* 主題管理拖曳排序 */
+  .topic-row {
+    transition: background 0.15s;
+    background: var(--bg);
+  }
+  .topic-row.dragging {
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    border-radius: 6px;
+  }
+  .topic-row-placeholder {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+  }
+  .topic-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    color: var(--ink-mute);
+    opacity: 0.5;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .topic-drag-handle:hover { opacity: 0.9; }
+  .topic-drag-handle:active { cursor: grabbing; }
+  .topic-drag-handle svg {
+    width: 20px;
+    height: 20px;
+  }
 </style>
 </head>
 <body>
@@ -1198,17 +1801,260 @@
   </div>
 </div>
 
+<!-- ===== Profile Modal ===== -->
+<div class="profile-modal" id="profileModal">
+  <div class="pf-subheader">
+    <button class="pf-back-btn" id="pfBackBtn" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="pf-title">個人頁</div>
+  </div>
+  <div class="pf-body">
+
+    <!-- 使用者區塊 -->
+    <div class="pf-user-section">
+      <div class="pf-avatar-big" id="pfAvatar">
+        <svg id="pfAvatarDefault" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+        </svg>
+        <img id="pfAvatarImg" alt="" style="display:none;" />
+      </div>
+      <div class="pf-name" id="pfName">訪客</div>
+      <div class="pf-email" id="pfEmail" style="display:none;"></div>
+      <button class="pf-login-btn" id="pfLoginBtn">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path fill="#4285F4" d="M22.5 12.3c0-.7-.1-1.3-.2-2H12v3.8h5.9c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2.1-2 3.2-4.8 3.2-7.8z"/>
+          <path fill="#34A853" d="M12 22c2.9 0 5.4-1 7.2-2.6l-3.6-2.7c-1 .7-2.3 1.1-3.6 1.1-2.8 0-5.2-1.9-6-4.4H2.3v2.8C4.1 19.6 7.8 22 12 22z"/>
+          <path fill="#FBBC05" d="M6 13.3c-.2-.7-.3-1.4-.3-2.1s.1-1.4.3-2.1V6.3H2.3C1.5 7.8 1 9.5 1 11.2c0 1.7.5 3.4 1.3 4.9L6 13.3z"/>
+          <path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.4 2.1 14.9 1 12 1 7.8 1 4.1 3.4 2.3 6.9L6 9.7c.9-2.5 3.2-4.3 6-4.3z"/>
+        </svg>
+        使用 Google 帳號登入
+      </button>
+      <button class="pf-logout-btn" id="pfLogoutBtn" style="display:none;">登出</button>
+    </div>
+
+    <!-- 個人功能群組 -->
+    <div class="pf-group">
+      <div class="pf-item" data-action="reading">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <div class="pf-item-label">我的閱讀</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="pf-item" data-action="favorites">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <div class="pf-item-label">我的收藏</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="pf-item" data-action="achievements">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 9a6 6 0 0 0 12 0M12 15v4M9 23h6"/></svg>
+        <div class="pf-item-label">我的成就</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="pf-item" data-action="weekly">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M9 4v16"/></svg>
+        <div class="pf-item-label">本週回顧</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <!-- 設定群組 -->
+    <div class="pf-group">
+      <div class="pf-item" data-action="notifications">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <div class="pf-item-label">通知設定</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="pf-item" data-action="topics">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+        <div class="pf-item-label">主題管理</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="pf-item" data-action="replay-tutorial">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h0"/></svg>
+        <div class="pf-item-label">重新查看教學</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <!-- 關於 -->
+    <div class="pf-group">
+      <div class="pf-item" data-action="about">
+        <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h0"/></svg>
+        <div class="pf-item-label">關於 InstaNews</div>
+        <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <div class="pf-version">版本 1.0.0 · Beta</div>
+  </div>
+
+  <!-- ===== 子頁:通知設定 ===== -->
+  <div class="profile-subpage" id="subpageNotifications">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">通知設定</div>
+    </div>
+    <div class="pf-body">
+      <div class="pf-section">
+        <div class="pf-section-title">每日推播時間</div>
+        <div id="pushScheduleList"></div>
+      </div>
+      <div class="pf-section">
+        <div class="pf-section-title">我的鬧鐘</div>
+        <div class="alarm-list" id="alarmList"></div>
+        <button class="alarm-add" id="alarmAddBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M12 5v14M5 12h14"/></svg>
+          新增鬧鐘
+        </button>
+      </div>
+      <div class="pf-section">
+        <div class="pf-section-title">推播類型</div>
+        <div id="pushTypeList"></div>
+      </div>
+      <div class="pf-footnote">ⓘ 推播功能將在正式版本上線</div>
+    </div>
+  </div>
+
+  <!-- ===== 子頁:主題管理 ===== -->
+  <div class="profile-subpage" id="subpageTopics">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">主題管理</div>
+    </div>
+    <div class="pf-body">
+      <div class="pf-section">
+        <div class="pf-section-title">選擇你想看的主題</div>
+        <div id="topicSubscriptionList"></div>
+      </div>
+      <div class="pf-footnote">ⓘ 至少需要選擇一個主題</div>
+    </div>
+  </div>
+
+  <!-- ===== 子頁:關於 InstaNews ===== -->
+  <div class="profile-subpage" id="subpageAbout">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">關於 InstaNews</div>
+    </div>
+    <div class="pf-body">
+      <div class="about-brand">
+        <div class="about-brand-en">InstaNews</div>
+        <div class="about-brand-zh">印 思 新 聞</div>
+        <div class="about-brand-ver">版本 1.0.0 · Beta</div>
+      </div>
+      <div class="pf-group">
+        <div class="pf-item" data-action="about-source">
+          <div class="pf-item-label">內容來源說明</div>
+          <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="pf-item" data-action="about-privacy">
+          <div class="pf-item-label">隱私政策</div>
+          <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="pf-item" data-action="about-terms">
+          <div class="pf-item-label">服務條款</div>
+          <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+      <div class="pf-version">© 2026 InstaNews</div>
+    </div>
+  </div>
+
+  <!-- ===== 子頁:內容來源說明 ===== -->
+  <div class="profile-subpage" id="subpageAboutSource">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">內容來源說明</div>
+    </div>
+    <div class="pf-body">
+      <div class="about-content">
+        <p>InstaNews 印思新聞的內容,來自 AI 從 Reuters、AP、CNBC、BBC、Focus Taiwan 等多家國際媒體的事實核心萃取與重寫。</p>
+        <p>我們堅持只取「事實」,不複製「表達」,並由編輯人工審核所有上架卡片。</p>
+        <p>每張卡片底部都會標示來源媒體,至少 2 家媒體交叉驗證的事實才會上架。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 子頁:隱私政策 ===== -->
+  <div class="profile-subpage" id="subpageAboutPrivacy">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">隱私政策</div>
+    </div>
+    <div class="pf-body">
+      <div class="about-content">
+        <p class="placeholder">隱私政策內容即將補上。</p>
+        <p class="placeholder">正式版上線前,將由實際法律顧問撰寫並公布完整版本。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 子頁:服務條款 ===== -->
+  <div class="profile-subpage" id="subpageAboutTerms">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">服務條款</div>
+    </div>
+    <div class="pf-body">
+      <div class="about-content">
+        <p class="placeholder">服務條款內容即將補上。</p>
+        <p class="placeholder">正式版上線前,將由實際法律顧問撰寫並公布完整版本。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Confirm Dialog (登入提示、刪除確認等共用) ===== -->
+<div class="confirm-dialog" id="confirmDialog">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle"></div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions" id="confirmActions"></div>
+  </div>
+</div>
+
+<!-- ===== Alarm Form Dialog ===== -->
+<div class="confirm-dialog form-dialog" id="alarmFormDialog">
+  <div class="confirm-box">
+    <div class="confirm-title" id="alarmFormTitle">新增鬧鐘</div>
+    <div class="form-row">
+      <label>時間</label>
+      <label class="form-time-picker">
+        <span class="time-display" id="alarmFormTimeDisplay">09:00</span>
+        <input type="time" id="alarmFormTime" value="09:00">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>名稱</label>
+      <input type="text" id="alarmFormLabel" placeholder="我的鬧鐘" maxlength="20">
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-btn" id="alarmFormCancel">取消</button>
+      <button class="confirm-btn primary" id="alarmFormConfirm">確認</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="app">
   <header>
     <div class="masthead"><span class="brand-en">InstaNews</span> <span class="dot">·</span> <span class="brand-zh">印思新聞</span></div>
-    <button class="icon-btn" id="favBtn" aria-label="收藏夾">
-      <svg class="bookmark-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-      </svg>
-      <svg class="bookmark-filled" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-      </svg>
-    </button>
+    <div class="header-icons">
+      <button class="icon-btn" id="favBtn" aria-label="收藏夾">
+        <svg class="bookmark-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        <svg class="bookmark-filled" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button class="icon-btn avatar-btn" id="profileBtn" aria-label="個人頁">
+        <svg class="avatar-default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+        </svg>
+        <img class="avatar-img" id="avatarImg" alt="" />
+      </button>
+    </div>
   </header>
 
   <nav class="tabs" id="tabs"></nav>
@@ -2382,17 +3228,625 @@
   window.showTutorial = showTutorial;
 
 
+
+
+  // ============ Profile Module ============
+  // localStorage keys
+  const USER_KEY = 'instanews_user';
+  const PUSH_SCHEDULE_KEY = 'instanews_push_schedule';
+  const ALARMS_KEY = 'instanews_alarms';
+  const PUSH_TYPES_KEY = 'instanews_push_types';
+  const TOPICS_KEY = 'instanews_subscribed_topics';
+  const TOPIC_ORDER_KEY = 'instanews_topic_order';
+
+  // 預設值
+  const DEFAULT_USER = { isLoggedIn: false, googleId: null, name: null, email: null, avatarUrl: null };
+  const DEFAULT_PUSH_SCHEDULE = {
+    morning: { enabled: true, time: '08:00', label: '早報' },
+    noon:    { enabled: false, time: '12:30', label: '午報' },
+    evening: { enabled: false, time: '21:00', label: '晚報' }
+  };
+  const DEFAULT_PUSH_TYPES = {
+    dailyNewCards: { enabled: true, label: '每日新卡組上架' },
+    breakingNews:  { enabled: true, label: '重大事件' },
+    weeklyReview:  { enabled: true, label: '每週回顧提醒' }
+  };
+
+  // === Storage helpers ===
+  function loadJSON(key, def) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? Object.assign({}, def, JSON.parse(raw)) : def;
+    } catch { return def; }
+  }
+  function loadArr(key, def) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : def;
+    } catch { return def; }
+  }
+  function saveJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  }
+
+  // === User 狀態 ===
+  function getUser() { return loadJSON(USER_KEY, DEFAULT_USER); }
+  function setUser(u) { saveJSON(USER_KEY, u); renderProfileHeader(); refreshHeaderAvatar(); }
+
+  // === Subscribed topics ===
+  function getSubscribedTopics() {
+    return loadArr(TOPICS_KEY, DATA && DATA.topics ? DATA.topics.map(t => t.id) : []);
+  }
+  function setSubscribedTopics(arr) { saveJSON(TOPICS_KEY, arr); }
+
+  // 主題的顯示順序（含未訂閱的，保留位置記憶）
+  function getTopicOrder() {
+    const stored = loadArr(TOPIC_ORDER_KEY, null);
+    const defaultOrder = DATA && DATA.topics ? DATA.topics.map(t => t.id) : [];
+    if (!stored || stored.length === 0) return defaultOrder;
+    // 防呆：補上 stored 中沒有但 DATA 有的新主題（順序加到尾）
+    const merged = [...stored];
+    defaultOrder.forEach(id => {
+      if (!merged.includes(id)) merged.push(id);
+    });
+    // 移除 DATA 中已不存在的主題
+    return merged.filter(id => defaultOrder.includes(id));
+  }
+  function setTopicOrder(arr) { saveJSON(TOPIC_ORDER_KEY, arr); }
+
+  // 取得「實際顯示用的主題列表」(按順序 + 過濾訂閱)
+  function getDisplayTopics() {
+    const order = getTopicOrder();
+    const subscribed = getSubscribedTopics();
+    return order
+      .filter(id => subscribed.includes(id))
+      .map(id => DATA.topics.find(t => t.id === id))
+      .filter(Boolean);
+  }
+  // 取得「按順序排列的所有主題」(主題管理頁用，含未訂閱)
+  function getOrderedAllTopics() {
+    const order = getTopicOrder();
+    return order
+      .map(id => DATA.topics.find(t => t.id === id))
+      .filter(Boolean);
+  }
+
+  // === Profile UI 元素引用 ===
+  const profileModal = document.getElementById('profileModal');
+  const profileBtn = document.getElementById('profileBtn');
+  const pfBackBtn = document.getElementById('pfBackBtn');
+
+  // === 開啟 / 關閉個人頁 ===
+  function openProfileModal() {
+    renderProfileHeader();
+    profileModal.classList.add('show');
+    trackEvent('profile_page_open', {});
+  }
+  function closeProfileModal() {
+    profileModal.classList.remove('show');
+    // 關閉所有子頁
+    document.querySelectorAll('.profile-subpage').forEach(sp => sp.classList.remove('show'));
+  }
+
+  profileBtn.addEventListener('click', openProfileModal);
+  pfBackBtn.addEventListener('click', closeProfileModal);
+
+  // === 個人頁頂部使用者區塊渲染 ===
+  function renderProfileHeader() {
+    const user = getUser();
+    const pfName = document.getElementById('pfName');
+    const pfEmail = document.getElementById('pfEmail');
+    const pfLoginBtn = document.getElementById('pfLoginBtn');
+    const pfLogoutBtn = document.getElementById('pfLogoutBtn');
+    const avatarDefault = document.getElementById('pfAvatarDefault');
+    const avatarImg = document.getElementById('pfAvatarImg');
+
+    if (user.isLoggedIn) {
+      pfName.textContent = user.name || '已登入用戶';
+      pfEmail.textContent = user.email || '';
+      pfEmail.style.display = 'block';
+      pfLoginBtn.style.display = 'none';
+      pfLogoutBtn.style.display = 'inline-flex';
+      if (user.avatarUrl) {
+        avatarImg.src = user.avatarUrl;
+        avatarImg.style.display = 'block';
+        avatarDefault.style.display = 'none';
+      } else {
+        avatarImg.style.display = 'none';
+        avatarDefault.style.display = 'block';
+      }
+    } else {
+      pfName.textContent = '訪客';
+      pfEmail.style.display = 'none';
+      pfLoginBtn.style.display = 'inline-flex';
+      pfLogoutBtn.style.display = 'none';
+      avatarImg.style.display = 'none';
+      avatarDefault.style.display = 'block';
+    }
+  }
+
+  // === Header 頭像同步 ===
+  function refreshHeaderAvatar() {
+    const user = getUser();
+    const btn = document.getElementById('profileBtn');
+    const img = document.getElementById('avatarImg');
+    if (user.isLoggedIn && user.avatarUrl) {
+      btn.classList.add('logged-in');
+      img.src = user.avatarUrl;
+    } else {
+      btn.classList.remove('logged-in');
+    }
+  }
+
+  // === Login mock ===
+  document.getElementById('pfLoginBtn').addEventListener('click', () => {
+    trackEvent('login_attempt', { provider: 'google', status: 'mock' });
+    showConfirmDialog({
+      title: 'Google 登入',
+      msg: '登入後可在不同裝置間同步你的收藏、閱讀紀錄與成就。\n\n登入功能即將推出。',
+      actions: [{ label: '知道了', primary: true }]
+    });
+    // TODO: 正式版實作真實 OAuth 與資料合併 dialog
+  });
+
+  document.getElementById('pfLogoutBtn').addEventListener('click', () => {
+    showConfirmDialog({
+      title: '登出',
+      msg: '確定要登出嗎？',
+      actions: [
+        { label: '取消' },
+        { label: '登出', primary: true, onClick: () => {
+          setUser(DEFAULT_USER);
+          trackEvent('logout', {});
+        }}
+      ]
+    });
+  });
+
+  // === 個人頁菜單點擊 ===
+  document.querySelectorAll('#profileModal .pf-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const action = item.dataset.action;
+      handleProfileAction(action);
+    });
+  });
+
+  function handleProfileAction(action) {
+    switch (action) {
+      case 'reading':
+        showToast('即將推出：閱讀月曆');
+        break;
+      case 'weekly':
+        showToast('即將推出：本週回顧');
+        break;
+      case 'favorites':
+        closeProfileModal();
+        setTimeout(() => openFavModal(), 350);
+        break;
+      case 'achievements':
+        showToast('成就頁即將推出');
+        break;
+      case 'notifications':
+        renderNotificationSettings();
+        showSubpage('subpageNotifications');
+        trackEvent('notification_settings_open', {});
+        break;
+      case 'topics':
+        renderTopicSubscription();
+        showSubpage('subpageTopics');
+        break;
+      case 'replay-tutorial':
+        closeProfileModal();
+        setTimeout(() => {
+          showTutorial();
+          trackEvent('tutorial_replay_from_profile', {});
+        }, 350);
+        break;
+      case 'about':
+        showSubpage('subpageAbout');
+        trackEvent('about_page_open', { subpage: 'main' });
+        break;
+      case 'about-source':
+        showSubpage('subpageAboutSource');
+        trackEvent('about_page_open', { subpage: 'source' });
+        break;
+      case 'about-privacy':
+        showSubpage('subpageAboutPrivacy');
+        trackEvent('about_page_open', { subpage: 'privacy' });
+        break;
+      case 'about-terms':
+        showSubpage('subpageAboutTerms');
+        trackEvent('about_page_open', { subpage: 'terms' });
+        break;
+    }
+  }
+
+  // === 子頁 push / pop ===
+  // 簡化版：所有子頁都疊在 profile modal 內，用 classList 控制顯示
+  function showSubpage(id) {
+    const sp = document.getElementById(id);
+    if (sp) sp.classList.add('show');
+  }
+  function hideSubpage(el) {
+    el.classList.remove('show');
+  }
+  document.querySelectorAll('.pf-sub-back').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const sub = e.currentTarget.closest('.profile-subpage');
+      if (sub) hideSubpage(sub);
+    });
+  });
+
+  // === 通知設定渲染 ===
+  function renderNotificationSettings() {
+    const schedule = loadJSON(PUSH_SCHEDULE_KEY, DEFAULT_PUSH_SCHEDULE);
+    const types = loadJSON(PUSH_TYPES_KEY, DEFAULT_PUSH_TYPES);
+
+    // 每日推播時間
+    const scheduleList = document.getElementById('pushScheduleList');
+    scheduleList.innerHTML = '';
+    ['morning', 'noon', 'evening'].forEach(key => {
+      const item = schedule[key] || DEFAULT_PUSH_SCHEDULE[key];
+      const row = document.createElement('div');
+      row.className = 'pf-row';
+      row.innerHTML = `
+        <div class="pf-row-label">${item.label}</div>
+        <label class="pf-row-time">
+          <span class="time-display">${item.time}</span>
+          <input type="time" value="${item.time}">
+        </label>
+        <div class="toggle ${item.enabled ? 'on' : ''}"></div>
+      `;
+      const timeInput = row.querySelector('input[type="time"]');
+      const timeDisplay = row.querySelector('.time-display');
+      timeInput.addEventListener('change', (e) => {
+        const oldTime = item.time;
+        const newTime = e.target.value;
+        schedule[key].time = newTime;
+        item.time = newTime;
+        timeDisplay.textContent = newTime;
+        saveJSON(PUSH_SCHEDULE_KEY, schedule);
+        trackEvent('push_schedule_time_change', { type: key, oldTime, newTime });
+      });
+      row.querySelector('.toggle').addEventListener('click', () => {
+        schedule[key].enabled = !schedule[key].enabled;
+        saveJSON(PUSH_SCHEDULE_KEY, schedule);
+        row.querySelector('.toggle').classList.toggle('on', schedule[key].enabled);
+        trackEvent('push_schedule_toggle', { type: key, enabled: schedule[key].enabled });
+      });
+      scheduleList.appendChild(row);
+    });
+
+    // 推播類型
+    const typeList = document.getElementById('pushTypeList');
+    typeList.innerHTML = '';
+    Object.keys(DEFAULT_PUSH_TYPES).forEach(key => {
+      const item = types[key] || DEFAULT_PUSH_TYPES[key];
+      const row = document.createElement('div');
+      row.className = 'pf-row';
+      row.innerHTML = `
+        <div class="pf-row-label">${item.label}</div>
+        <div class="toggle ${item.enabled ? 'on' : ''}"></div>
+      `;
+      row.querySelector('.toggle').addEventListener('click', () => {
+        types[key].enabled = !types[key].enabled;
+        saveJSON(PUSH_TYPES_KEY, types);
+        row.querySelector('.toggle').classList.toggle('on', types[key].enabled);
+        trackEvent('push_type_toggle', { type: key, enabled: types[key].enabled });
+      });
+      typeList.appendChild(row);
+    });
+
+    // 鬧鐘列表
+    renderAlarmList();
+  }
+
+  // === 鬧鐘管理 ===
+  function getAlarms() { return loadArr(ALARMS_KEY, []); }
+  function saveAlarms(arr) { saveJSON(ALARMS_KEY, arr); }
+
+  function renderAlarmList() {
+    const list = document.getElementById('alarmList');
+    const alarms = getAlarms();
+    list.innerHTML = '';
+    if (alarms.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--ink-mute);font-size:13px;">尚未設定鬧鐘</div>';
+      return;
+    }
+    alarms.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'alarm-item';
+      div.innerHTML = `
+        <div class="alarm-time">${a.time}</div>
+        <div class="alarm-label">${escapeHtml(a.label)}</div>
+        <button class="alarm-delete" data-id="${a.id}" aria-label="刪除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      `;
+      // 點該項編輯
+      div.addEventListener('click', (e) => {
+        if (e.target.closest('.alarm-delete')) return;
+        openAlarmForm(a);
+      });
+      // 刪除
+      div.querySelector('.alarm-delete').addEventListener('click', (e) => {
+        e.stopPropagation();
+        showConfirmDialog({
+          title: '刪除鬧鐘',
+          msg: `要刪除 ${a.time} 「${a.label}」嗎？`,
+          actions: [
+            { label: '取消' },
+            { label: '刪除', primary: true, onClick: () => {
+              const remaining = getAlarms().filter(x => x.id !== a.id);
+              saveAlarms(remaining);
+              renderAlarmList();
+              trackEvent('alarm_delete', { time: a.time, label: a.label });
+            }}
+          ]
+        });
+      });
+      list.appendChild(div);
+    });
+  }
+
+  // 鬧鐘新增 / 編輯表單
+  let _editingAlarm = null;
+  function openAlarmForm(alarm) {
+    _editingAlarm = alarm || null;
+    const formTitle = document.getElementById('alarmFormTitle');
+    const formTime = document.getElementById('alarmFormTime');
+    const formTimeDisplay = document.getElementById('alarmFormTimeDisplay');
+    const formLabel = document.getElementById('alarmFormLabel');
+    if (alarm) {
+      formTitle.textContent = '編輯鬧鐘';
+      formTime.value = alarm.time;
+      formTimeDisplay.textContent = alarm.time;
+      formLabel.value = alarm.label;
+    } else {
+      formTitle.textContent = '新增鬧鐘';
+      formTime.value = '09:00';
+      formTimeDisplay.textContent = '09:00';
+      const existingCount = getAlarms().length;
+      formLabel.value = '我的鬧鐘 #' + (existingCount + 1);
+      formLabel.placeholder = '我的鬧鐘 #' + (existingCount + 1);
+    }
+    document.getElementById('alarmFormDialog').classList.add('show');
+  }
+  // 同步 alarm form 的時間數字到 display（一次性 listener）
+  (function attachAlarmFormTimeSync() {
+    const inp = document.getElementById('alarmFormTime');
+    const disp = document.getElementById('alarmFormTimeDisplay');
+    if (inp && disp) {
+      inp.addEventListener('change', () => { disp.textContent = inp.value; });
+      inp.addEventListener('input', () => { disp.textContent = inp.value; });
+    }
+  })();
+  function closeAlarmForm() {
+    document.getElementById('alarmFormDialog').classList.remove('show');
+    _editingAlarm = null;
+  }
+  document.getElementById('alarmAddBtn').addEventListener('click', () => openAlarmForm(null));
+  document.getElementById('alarmFormCancel').addEventListener('click', closeAlarmForm);
+  document.getElementById('alarmFormConfirm').addEventListener('click', () => {
+    const time = document.getElementById('alarmFormTime').value;
+    const label = document.getElementById('alarmFormLabel').value.trim() || '我的鬧鐘';
+    if (_editingAlarm) {
+      // 編輯
+      const arr = getAlarms().map(a =>
+        a.id === _editingAlarm.id ? { ...a, time, label } : a
+      );
+      saveAlarms(arr);
+      trackEvent('alarm_edit', {
+        oldTime: _editingAlarm.time, newTime: time,
+        oldLabel: _editingAlarm.label, newLabel: label
+      });
+    } else {
+      // 新增
+      const newAlarm = {
+        id: 'alarm_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        time, label,
+        createdAt: new Date().toISOString()
+      };
+      const arr = getAlarms();
+      arr.push(newAlarm);
+      saveAlarms(arr);
+      trackEvent('alarm_create', { time, label });
+    }
+    renderAlarmList();
+    closeAlarmForm();
+  });
+
+  // === 主題管理 ===
+  function renderTopicSubscription() {
+    const subscribed = getSubscribedTopics();
+    const list = document.getElementById('topicSubscriptionList');
+    list.innerHTML = '';
+    const orderedTopics = getOrderedAllTopics();
+    orderedTopics.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'pf-row topic-row';
+      row.dataset.topicId = t.id;
+      const isOn = subscribed.includes(t.id);
+      row.innerHTML = `
+        <div class="topic-drag-handle" aria-label="拖曳排序">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="3" y1="15" x2="21" y2="15"/>
+          </svg>
+        </div>
+        <div class="pf-row-label">${t.emoji || ''} ${t.name}</div>
+        <div class="toggle ${isOn ? 'on' : ''}"></div>
+      `;
+      // toggle 行為
+      row.querySelector('.toggle').addEventListener('click', () => {
+        const cur = getSubscribedTopics();
+        const idx = cur.indexOf(t.id);
+        if (idx >= 0) {
+          if (cur.length === 1) {
+            showToast('至少需要選擇一個主題');
+            return;
+          }
+          cur.splice(idx, 1);
+          row.querySelector('.toggle').classList.remove('on');
+          trackEvent('topic_subscription_change', { topic: t.id, enabled: false });
+        } else {
+          cur.push(t.id);
+          row.querySelector('.toggle').classList.add('on');
+          trackEvent('topic_subscription_change', { topic: t.id, enabled: true });
+        }
+        setSubscribedTopics(cur);
+        renderTabs();
+        if (!cur.includes(DATA.topics[currentTopicIdx].id)) {
+          const firstId = getDisplayTopics()[0]?.id;
+          if (firstId) {
+            const firstIdx = DATA.topics.findIndex(tt => tt.id === firstId);
+            currentTopicIdx = firstIdx;
+            currentCardIdx = 0;
+            renderCards();
+          }
+        }
+      });
+      list.appendChild(row);
+    });
+    attachTopicDragAndDrop(list);
+  }
+
+  // ====== 主題管理頁的拖曳排序 ======
+  function attachTopicDragAndDrop(listEl) {
+    let draggedRow = null;
+    let placeholder = null;
+    let startY = 0;
+    let originalIndex = -1;
+    let touchStartTime = 0;
+
+
+
+    function startDrag(row, clientY) {
+      draggedRow = row;
+      startY = clientY;
+      originalIndex = Array.from(listEl.children).indexOf(row);
+      // 記錄原始 rect (給 fixed 定位用)
+      const rect = row.getBoundingClientRect();
+      // 建 placeholder (跟原 row 一樣高度、佔位用)
+      placeholder = document.createElement('div');
+      placeholder.className = 'topic-row-placeholder';
+      placeholder.style.height = rect.height + 'px';
+      placeholder.style.margin = getComputedStyle(row).margin;
+      // 把 placeholder 放到原 row 位置
+      row.parentNode.insertBefore(placeholder, row);
+      // dragged row 改 fixed，鎖死原本的視覺尺寸
+      row.classList.add('dragging');
+      row.style.position = 'fixed';
+      row.style.left = rect.left + 'px';
+      row.style.top = rect.top + 'px';
+      row.style.width = rect.width + 'px';
+      row.style.height = rect.height + 'px';
+      row.style.zIndex = '1000';
+      row.style.pointerEvents = 'none';
+      row.style.margin = '0';
+    }
+
+    function moveDrag(clientY) {
+      if (!draggedRow) return;
+      const dy = clientY - startY;
+      draggedRow.style.transform = `translateY(${dy}px)`;
+      // 找滑鼠/手指下方的 row (排除 draggedRow 跟 placeholder)
+      const rows = Array.from(listEl.querySelectorAll('.topic-row:not(.dragging)'));
+      for (const r of rows) {
+        const rect = r.getBoundingClientRect();
+        if (clientY < rect.top || clientY > rect.bottom) continue;
+        const isAfter = clientY > rect.top + rect.height / 2;
+        if (isAfter) {
+          listEl.insertBefore(placeholder, r.nextSibling);
+        } else {
+          listEl.insertBefore(placeholder, r);
+        }
+        break;
+      }
+    }
+
+    function endDrag() {
+      if (!draggedRow) return;
+      // 把 draggedRow 放到 placeholder 位置
+      listEl.insertBefore(draggedRow, placeholder);
+      placeholder.remove();
+      placeholder = null;
+      draggedRow.classList.remove('dragging');
+      // 清除所有 inline style
+      draggedRow.style.cssText = '';
+      // 計算新順序
+      const newOrder = Array.from(listEl.querySelectorAll('.topic-row')).map(r => r.dataset.topicId);
+      setTopicOrder(newOrder);
+      trackEvent('topic_order_change', { newOrder });
+      renderTabs();
+      draggedRow = null;
+    }
+
+    listEl.querySelectorAll('.topic-drag-handle').forEach(handle => {
+      // === 觸控 ===
+      handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const row = handle.closest('.topic-row');
+        touchStartTime = Date.now();
+        startDrag(row, e.touches[0].clientY);
+      }, { passive: false });
+      // === 滑鼠 ===
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const row = handle.closest('.topic-row');
+        startDrag(row, e.clientY);
+      });
+    });
+
+    // 全域 listener (因為 dragged row 變 fixed 後手指/滑鼠可能離開 handle)
+    document.addEventListener('touchmove', (e) => {
+      if (!draggedRow) return;
+      e.preventDefault();
+      moveDrag(e.touches[0].clientY);
+    }, { passive: false });
+    document.addEventListener('touchend', () => { if (draggedRow) endDrag(); });
+    document.addEventListener('mousemove', (e) => { if (draggedRow) moveDrag(e.clientY); });
+    document.addEventListener('mouseup', () => { if (draggedRow) endDrag(); });
+  }
+
+  // === 通用 Confirm Dialog ===
+  function showConfirmDialog({ title, msg, actions }) {
+    document.getElementById('confirmTitle').textContent = title || '';
+    document.getElementById('confirmMsg').textContent = msg || '';
+    const actEl = document.getElementById('confirmActions');
+    actEl.innerHTML = '';
+    actions.forEach(a => {
+      const btn = document.createElement('button');
+      btn.className = 'confirm-btn' + (a.primary ? ' primary' : '');
+      btn.textContent = a.label;
+      btn.addEventListener('click', () => {
+        document.getElementById('confirmDialog').classList.remove('show');
+        if (a.onClick) a.onClick();
+      });
+      actEl.appendChild(btn);
+    });
+    document.getElementById('confirmDialog').classList.add('show');
+  }
+
+  // === 啟動時初始化 header avatar ===
+  refreshHeaderAvatar();
+
+
   bootApp();
 
 
   function renderTabs() {
     tabs.innerHTML = '';
-    DATA.topics.forEach((t, i) => {
+    const displayTopics = getDisplayTopics();
+    const currentId = DATA.topics[currentTopicIdx]?.id;
+    displayTopics.forEach(t => {
+      // 找到原 DATA.topics 中的 index 用於 switchTopic
+      const origIdx = DATA.topics.findIndex(d => d.id === t.id);
       const btn = document.createElement('button');
-      btn.className = 'tab' + (i === currentTopicIdx ? ' active' : '');
+      btn.className = 'tab' + (t.id === currentId ? ' active' : '');
       btn.dataset.topic = t.id;
       btn.innerHTML = `<span class="emoji">${t.emoji}</span>${t.name}`;
-      btn.onclick = () => switchTopic(i);
+      btn.onclick = () => switchTopic(origIdx);
       tabs.appendChild(btn);
     });
   }
@@ -2582,8 +4036,36 @@
   // 記住每個主題上次停在哪張
   const topicLastIdx = {};
 
+  // 按 display 順序前後切主題（給左右滑/鍵盤左右用）
+  function navigateTopicByDirection(dir, fromSwipe = false) {
+    const display = getDisplayTopics();
+    const curId = DATA.topics[currentTopicIdx]?.id;
+    const curDisplayIdx = display.findIndex(t => t.id === curId);
+    if (curDisplayIdx < 0) return;
+    const nextIdx = curDisplayIdx + dir;
+    if (nextIdx < 0 || nextIdx >= display.length) {
+      // 邊界 → 回彈
+      if (typeof bounce === 'function') bounce(dir > 0 ? 'right' : 'left');
+      return;
+    }
+    const nextTopicId = display[nextIdx].id;
+    const targetDataIdx = DATA.topics.findIndex(t => t.id === nextTopicId);
+    switchTopic(targetDataIdx, fromSwipe);
+  }
+
   function switchTopic(idx, fromSwipe = false) {
     if (idx < 0 || idx >= DATA.topics.length || idx === currentTopicIdx) return;
+    // 跳過未訂閱主題（左右滑或點 tab 都會經過這裡）
+    const subscribed = getSubscribedTopics();
+    if (!subscribed.includes(DATA.topics[idx].id)) {
+      const dir = idx > currentTopicIdx ? 1 : -1;
+      let next = idx + dir;
+      while (next >= 0 && next < DATA.topics.length && !subscribed.includes(DATA.topics[next].id)) {
+        next += dir;
+      }
+      if (next < 0 || next >= DATA.topics.length) return;
+      idx = next;
+    }
     // 埋點：主題切換（要在切之前抓 from）
     const fromTopic = DATA.topics[currentTopicIdx].id;
     const toTopic = DATA.topics[idx].id;
@@ -2604,7 +4086,9 @@
     const maxIdx = DATA.topics[idx].cards.length;
     if (savedIdx > maxIdx) savedIdx = 0;
     currentCardIdx = savedIdx;
-    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+    // 用 dataset.topic === 新主題 id 比對 (因為 tabs 順序 ≠ DATA.topics 順序)
+    const newTopicId = DATA.topics[idx].id;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.topic === newTopicId));
     renderCards();
     persistCurrentPosition();
   }
@@ -2708,8 +4192,8 @@
       else prevCard();
     } else if (absDx > absDy && absDx > threshold) {
       // horizontal swipe = switch topic
-      if (dx < 0) switchTopic(currentTopicIdx + 1, true);
-      else switchTopic(currentTopicIdx - 1, true);
+      if (dx < 0) navigateTopicByDirection(1, true);
+      else navigateTopicByDirection(-1, true);
     }
     touchStart = null;
     touchEnd = null;
@@ -2725,8 +4209,8 @@
     // 取主要方向
     if (absX > absY && absX > 20) {
       wheelLock = true;
-      if (e.deltaX > 0) switchTopic(currentTopicIdx + 1, true);
-      else switchTopic(currentTopicIdx - 1, true);
+      if (e.deltaX > 0) navigateTopicByDirection(1, true);
+      else navigateTopicByDirection(-1, true);
       setTimeout(() => { wheelLock = false; }, 400);
     } else if (absY > 20) {
       wheelLock = true;
@@ -2754,8 +4238,8 @@
     // 短時間 + 夠長距離 = 拖曳手勢
     if (elapsed > 600) return;
     if (absDx > 60 && absDx > absDy) {
-      if (dx < 0) switchTopic(currentTopicIdx + 1, true);
-      else switchTopic(currentTopicIdx - 1, true);
+      if (dx < 0) navigateTopicByDirection(1, true);
+      else navigateTopicByDirection(-1, true);
     } else if (absDy > 60 && absDy > absDx) {
       if (dy < 0) nextCard();
       else prevCard();
@@ -2774,8 +4258,8 @@
     }
     if (e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); nextCard(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); prevCard(); }
-    else if (e.key === 'ArrowRight') switchTopic(currentTopicIdx + 1, true);
-    else if (e.key === 'ArrowLeft') switchTopic(currentTopicIdx - 1, true);
+    else if (e.key === 'ArrowRight') navigateTopicByDirection(1, true);
+    else if (e.key === 'ArrowLeft') navigateTopicByDirection(-1, true);
     else if (e.key === 'Escape') closeFavModal();
   });
 
@@ -3260,6 +4744,76 @@
 
 
 
+  function initProfilePanel() {
+    const panel = document.createElement('div');
+    panel.className = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-panel-header">
+        <div class="debug-panel-title">👤 Profile</div>
+      </div>
+      <div class="debug-panel-list" id="dbgPfList"></div>
+      <div class="debug-panel-meta">
+        <button id="dbgPfLogin" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-right:4px;font-family:inherit;">假登入</button>
+        <button id="dbgPfLogout" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-right:4px;font-family:inherit;">登出</button>
+        <button id="dbgPfReset" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">重設設定</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    function render() {
+      const user = getUser();
+      const list = document.getElementById('dbgPfList');
+      const schedule = loadJSON(PUSH_SCHEDULE_KEY, DEFAULT_PUSH_SCHEDULE);
+      const alarms = getAlarms();
+      const topics = getSubscribedTopics();
+      list.innerHTML = `
+        <div class="ev">
+          <span class="ev-name">isLoggedIn</span>
+          <div class="ev-props">${user.isLoggedIn ? user.name + ' (' + user.email + ')' : 'false (訪客)'}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">推播時段</span>
+          <div class="ev-props">早 ${schedule.morning.enabled ? 'on' : 'off'} / 午 ${schedule.noon.enabled ? 'on' : 'off'} / 晚 ${schedule.evening.enabled ? 'on' : 'off'}</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">鬧鐘</span>
+          <div class="ev-props">${alarms.length} 個</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">訂閱主題</span>
+          <div class="ev-props">${topics.join(', ')}</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('dbgPfLogin').addEventListener('click', () => {
+      setUser({
+        isLoggedIn: true,
+        googleId: 'mock_google_id',
+        name: '測試用戶',
+        email: 'test@gmail.com',
+        avatarUrl: null
+      });
+      render();
+    });
+    document.getElementById('dbgPfLogout').addEventListener('click', () => {
+      setUser(DEFAULT_USER);
+      render();
+    });
+    document.getElementById('dbgPfReset').addEventListener('click', () => {
+      if (confirm('重設所有設定（推播 / 鬧鐘 / 主題訂閱）？')) {
+        localStorage.removeItem(PUSH_SCHEDULE_KEY);
+        localStorage.removeItem(ALARMS_KEY);
+        localStorage.removeItem(PUSH_TYPES_KEY);
+        localStorage.removeItem(TOPICS_KEY);
+        render();
+      }
+    });
+
+    render();
+    setInterval(render, 1000);
+  }
+
   function initTutorialPanel() {
     const panel = document.createElement('div');
     panel.className = 'debug-panel';
@@ -3481,6 +5035,10 @@
     }
     if (debugMode === 'tutorial') {
       initTutorialPanel();
+      return;
+    }
+    if (debugMode === 'profile') {
+      initProfilePanel();
       return;
     }
     if (debugMode !== '1') return;
