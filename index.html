@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#FAF8F3">
 <title>InstaNews · 印思新聞</title>
-<meta name="version" content="demo-v0.12.2">
+<meta name="version" content="demo-v0.13.3">
 <meta name="version-date" content="2026-05-18">
 <meta name="description" content="InstaNews 印思新聞 demo - 讓你 30 秒跟上世界，還能跟同事聊得起來">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,6 +20,7 @@
     --paper: #FFFFFF;
     --rule: #E8E3DA;
     --gold: #B08B4F;
+    --seal: #B0533F;  /* 印泥朱砂色，月曆點亮用 */
     --accent-finance: #2B4C7E;
     --accent-tech: #6B4226;
     --accent-tw: #8B2C2C;
@@ -1773,6 +1774,108 @@
     width: 20px;
     height: 20px;
   }
+
+  /* ===== 閱讀月曆 (累積版 Streak) ===== */
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 26px 20px 10px;
+  }
+  .cal-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--ink);
+    letter-spacing: 0.06em;
+    min-width: 132px;
+    text-align: center;
+  }
+  .cal-nav {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-soft);
+    border-radius: 50%;
+  }
+  .cal-nav:hover { background: rgba(0,0,0,0.04); }
+  .cal-nav.disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+  .cal-nav svg { width: 18px; height: 18px; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    padding: 12px 16px 8px;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  .cal-weekday {
+    text-align: center;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+    padding-bottom: 4px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    width: 100%;
+    max-width: 36px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-soft);
+    position: relative;
+    cursor: default;
+  }
+  .cal-day.unchecked { border: 1px solid var(--rule); }
+  .cal-day.checked {
+    background: var(--seal);
+    color: #FAF6F0;
+    cursor: pointer;
+  }
+  .cal-day.future { opacity: 0.3; }
+  .cal-day.today::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .cal-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 18px 24px 0;
+    padding: 20px 0 4px;
+    border-top: 1px solid var(--rule);
+  }
+  .cal-stat { text-align: center; }
+  .cal-stat-num {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 26px;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+  .cal-stat-label {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.12em;
+    margin-top: 4px;
+  }
 </style>
 </head>
 <body>
@@ -1836,7 +1939,7 @@
     <div class="pf-group">
       <div class="pf-item" data-action="reading">
         <svg class="pf-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <div class="pf-item-label">我的閱讀</div>
+        <div class="pf-item-label">閱讀日曆</div>
         <svg class="pf-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="pf-item" data-action="favorites">
@@ -1926,6 +2029,41 @@
         <div id="topicSubscriptionList"></div>
       </div>
       <div class="pf-footnote">ⓘ 至少需要選擇一個主題</div>
+    </div>
+  </div>
+
+  <!-- ===== 子頁:我的閱讀 (月曆熱力圖) ===== -->
+  <div class="profile-subpage" id="subpageReading">
+    <div class="pf-subheader">
+      <button class="pf-back-btn pf-sub-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="pf-title">閱讀日曆</div>
+    </div>
+    <div class="pf-body">
+      <div class="cal-header">
+        <button class="cal-nav" id="calPrev" aria-label="上個月">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="cal-nav" id="calNext" aria-label="下個月">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-stats">
+        <div class="cal-stat">
+          <div class="cal-stat-num" id="calStatMonth">0</div>
+          <div class="cal-stat-label">本月累積</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-num" id="calStatTotal">0</div>
+          <div class="cal-stat-label">生涯累積</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-num" id="calStatWeek">0 / 7</div>
+          <div class="cal-stat-label">過去 7 天</div>
+        </div>
+      </div>
+      <div class="pf-footnote">ⓘ 當日開啟即點亮<span id="calEncourage" style="display:none;"><br>開始你的閱讀記錄</span></div>
     </div>
   </div>
 
@@ -3024,6 +3162,9 @@
       // 埋點
       trackEvent('app_open', { source: 'icon', fromCache: result.fromCache });
 
+      // 當日開啟 App 即點亮閱讀日曆（同日去重）
+      recordDailyCheckIn();
+
       // 檢查是否要顯示教學蒙版（splash 淡出後 + 主畫面就緒）
       const tutorialDone = localStorage.getItem(TUTORIAL_KEY) === 'true';
       if (!tutorialDone) {
@@ -3414,7 +3555,7 @@
   function handleProfileAction(action) {
     switch (action) {
       case 'reading':
-        showToast('即將推出：閱讀月曆');
+        openReadingCalendar();
         break;
       case 'weekly':
         showToast('即將推出：本週回顧');
@@ -3832,6 +3973,163 @@
   refreshHeaderAvatar();
 
 
+
+
+  // ============ 成就資料層 (本批先建 dailyCheckIns，成就系統批次再疊門檻/徽章) ============
+  const ACHIEVEMENTS_KEY = 'instanews_achievements';
+
+  function readAchievements() {
+    const def = { counters: { daysCheckedIn: 0, dailyCheckIns: [] } };
+    try {
+      const raw = localStorage.getItem(ACHIEVEMENTS_KEY);
+      if (!raw) return def;
+      const obj = JSON.parse(raw);
+      if (!obj.counters) obj.counters = def.counters;
+      if (!Array.isArray(obj.counters.dailyCheckIns)) obj.counters.dailyCheckIns = [];
+      if (typeof obj.counters.daysCheckedIn !== 'number') {
+        obj.counters.daysCheckedIn = obj.counters.dailyCheckIns.length;
+      }
+      return obj;
+    } catch (e) {
+      return def;
+    }
+  }
+  function writeAchievements(obj) {
+    try { localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(obj)); } catch (e) {}
+  }
+  function readDailyCheckIns() {
+    return readAchievements().counters.dailyCheckIns;
+  }
+
+  // 今日首次看完任一主題 → 點亮當日（同日重複呼叫不重複加）
+  function recordDailyCheckIn() {
+    const today = getEffectiveToday();
+    const ach = readAchievements();
+    if (!ach.counters.dailyCheckIns.includes(today)) {
+      ach.counters.dailyCheckIns.push(today);
+      ach.counters.daysCheckedIn = ach.counters.dailyCheckIns.length;
+      writeAchievements(ach);
+      // 若月曆頁開著（如 debug 流程），即時更新
+      refreshReadingCalendar();
+    }
+  }
+
+  // ============ 閱讀月曆 (累積版 Streak，視覺化 dailyCheckIns) ============
+  let calYear = null;
+  let calMonth = null;  // 1-12
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function openReadingCalendar() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth() + 1;
+    renderReadingCalendar();
+    showSubpage('subpageReading');
+    trackEvent('reading_calendar_open', {});
+  }
+
+  function refreshReadingCalendar() {
+    const sp = document.getElementById('subpageReading');
+    if (sp && sp.classList.contains('show')) renderReadingCalendar();
+  }
+
+  function renderReadingCalendar() {
+    const titleEl = document.getElementById('calTitle');
+    const gridEl = document.getElementById('calGrid');
+    const nextBtn = document.getElementById('calNext');
+    if (!titleEl || !gridEl) return;
+
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = now.getMonth() + 1;
+    const todayStr = getTodayDateString();
+
+    titleEl.textContent = calYear + ' 年 ' + calMonth + ' 月';
+    // 不能切到未來月份
+    const atCurrentMonth = (calYear === curY && calMonth === curM);
+    nextBtn.classList.toggle('disabled', atCurrentMonth);
+
+    const checkIns = new Set(readDailyCheckIns());
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay();  // 0=日
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+
+    let cells = '';
+    ['日', '一', '二', '三', '四', '五', '六'].forEach(w => {
+      cells += '<div class="cal-weekday">' + w + '</div>';
+    });
+    for (let i = 0; i < firstDay; i++) {
+      cells += '<div class="cal-day empty"></div>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = calYear + '-' + pad2(calMonth) + '-' + pad2(d);
+      const isChecked = checkIns.has(dateStr);
+      const isToday = dateStr === todayStr;
+      const isFuture = dateStr > todayStr;
+      let cls = 'cal-day';
+      if (isFuture) cls += ' future';
+      else if (isChecked) cls += ' checked';
+      else cls += ' unchecked';
+      if (isToday) cls += ' today';
+      cells += '<div class="' + cls + '" data-date="' + dateStr + '" data-checked="' + isChecked + '">' + d + '</div>';
+    }
+    // 補滿到固定 6 週 (42 格)，統計區位置不隨月份週數變動
+    for (let i = firstDay + daysInMonth; i < 42; i++) {
+      cells += '<div class="cal-day empty"></div>';
+    }
+    gridEl.innerHTML = cells;
+
+    // 點擊日期（未來日不可點）
+    gridEl.querySelectorAll('.cal-day:not(.empty):not(.future)').forEach(el => {
+      el.addEventListener('click', () => {
+        const date = el.dataset.date;
+        const isCheckedIn = el.dataset.checked === 'true';
+        trackEvent('reading_calendar_day_click', { date, isCheckedIn });
+        if (isCheckedIn) {
+          const parts = date.split('-');
+          showToast(parseInt(parts[1]) + '/' + parseInt(parts[2]) + ' 已完成閱讀');
+        }
+      });
+    });
+
+    // 統計：本月(顯示月)累積 / 總累積 / 過去 7 天
+    const all = readDailyCheckIns();
+    const monthPrefix = calYear + '-' + pad2(calMonth);
+    const monthCount = all.filter(s => s.startsWith(monthPrefix)).length;
+    const totalCount = all.length;
+    let recent = 0;
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - i);
+      const s = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+      if (all.includes(s)) recent++;
+    }
+    document.getElementById('calStatMonth').textContent = monthCount;
+    document.getElementById('calStatTotal').textContent = totalCount;
+    document.getElementById('calStatWeek').textContent = recent + ' / 7';
+
+    // 新用戶鼓勵文字
+    const encourage = document.getElementById('calEncourage');
+    if (encourage) encourage.style.display = totalCount === 0 ? 'inline' : 'none';
+  }
+
+  // 月份切換
+  document.getElementById('calPrev').addEventListener('click', () => {
+    calMonth--;
+    if (calMonth < 1) { calMonth = 12; calYear--; }
+    renderReadingCalendar();
+    trackEvent('reading_calendar_month_change', { year: calYear, month: calMonth });
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    const now = new Date();
+    if (calYear === now.getFullYear() && calMonth === now.getMonth() + 1) return;
+    calMonth++;
+    if (calMonth > 12) { calMonth = 1; calYear++; }
+    renderReadingCalendar();
+    trackEvent('reading_calendar_month_change', { year: calYear, month: calMonth });
+  });
+
+
   bootApp();
 
 
@@ -3887,7 +4185,7 @@
       const topicNames = DATA.topics.map(t => t.name).join(' / ');
       const totalCards = DATA.topics.reduce((sum, t) => sum + t.cards.length, 0);
       // 取本月累積閱讀天數（從成就 counter；目前沒做成就，先寫 placeholder）
-      const monthDays = state.completedTopics.length > 0 ? '1' : '0';  // demo 階段先簡化
+      const monthDays = readDailyCheckIns().filter(s => s.startsWith(getEffectiveToday().slice(0, 7))).length;
       el.innerHTML = `
         ${TRIPLE_CHECK_SVG}
         <div class="end-card-title">今天全部看完了</div>
@@ -4814,6 +5112,95 @@
     setInterval(render, 1000);
   }
 
+  function initCalendarPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-panel-header">
+        <div class="debug-panel-title">📅 Calendar</div>
+        <div class="debug-panel-actions">
+          <button id="dbgCalClear">清空</button>
+        </div>
+      </div>
+      <div class="debug-panel-list" id="dbgCalList"></div>
+      <div class="debug-panel-meta">
+        <button id="dbgCalToday" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-right:4px;font-family:inherit;">加今日</button>
+        <button id="dbgCalRandom" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-right:4px;font-family:inherit;">隨機 20 天</button>
+        <button id="dbgCalManual" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;">輸入日期</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    function render() {
+      const all = readDailyCheckIns();
+      const list = document.getElementById('dbgCalList');
+      const recent = all.slice(-8).reverse();
+      list.innerHTML = `
+        <div class="ev">
+          <span class="ev-name">總點亮天數</span>
+          <div class="ev-props">${all.length} 天</div>
+        </div>
+        <div class="ev">
+          <span class="ev-name">最近點亮</span>
+          <div class="ev-props">${recent.length > 0 ? recent.join('<br>') : '(無)'}</div>
+        </div>
+      `;
+    }
+
+    function addDates(dates) {
+      const ach = readAchievements();
+      const set = new Set(ach.counters.dailyCheckIns);
+      dates.forEach(d => set.add(d));
+      ach.counters.dailyCheckIns = Array.from(set).sort();
+      ach.counters.daysCheckedIn = ach.counters.dailyCheckIns.length;
+      writeAchievements(ach);
+      refreshReadingCalendar();
+      render();
+    }
+
+    document.getElementById('dbgCalToday').addEventListener('click', () => {
+      addDates([getEffectiveToday()]);
+    });
+
+    document.getElementById('dbgCalRandom').addEventListener('click', () => {
+      // 過去 30 天中隨機取 20 天
+      const offsets = Array.from({ length: 30 }, (_, i) => i + 1);
+      for (let i = offsets.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [offsets[i], offsets[j]] = [offsets[j], offsets[i]];
+      }
+      const dates = offsets.slice(0, 20).map(off => {
+        const dt = new Date();
+        dt.setDate(dt.getDate() - off);
+        return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+      });
+      addDates(dates);
+    });
+
+    document.getElementById('dbgCalManual').addEventListener('click', () => {
+      const input = prompt('輸入日期 (YYYY-MM-DD)：');
+      if (input && /^\d{4}-\d{2}-\d{2}$/.test(input.trim())) {
+        addDates([input.trim()]);
+      } else if (input) {
+        alert('格式錯誤，需為 YYYY-MM-DD');
+      }
+    });
+
+    document.getElementById('dbgCalClear').addEventListener('click', () => {
+      if (confirm('清空所有點亮紀錄？')) {
+        const ach = readAchievements();
+        ach.counters.dailyCheckIns = [];
+        ach.counters.daysCheckedIn = 0;
+        writeAchievements(ach);
+        refreshReadingCalendar();
+        render();
+      }
+    });
+
+    render();
+    setInterval(render, 1000);
+  }
+
   function initTutorialPanel() {
     const panel = document.createElement('div');
     panel.className = 'debug-panel';
@@ -5035,6 +5422,10 @@
     }
     if (debugMode === 'tutorial') {
       initTutorialPanel();
+      return;
+    }
+    if (debugMode === 'calendar') {
+      initCalendarPanel();
       return;
     }
     if (debugMode === 'profile') {
